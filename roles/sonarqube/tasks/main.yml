@@ -20,13 +20,13 @@
   shell: |
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   args:
-    creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+    creates: "/home/{{ ssh_user }}/.oh-my-zsh"
   become: yes
-  become_user: "{{ ansible_user }}"
+  become_user: "{{ ssh_user }}"
 
 - name: Change default shell to zsh for ansible user
   user:
-    name: "{{ ansible_user }}"
+    name: "{{ ssh_user }}"
     shell: /bin/zsh
 
 - name: Install Portainer
@@ -50,7 +50,7 @@
     state: directory
     owner: "1000"
     group: "1000"
-    mode: '0755'
+    mode: "0755"
   loop:
     - /opt/sonarqube/data
     - /opt/sonarqube/extensions
@@ -125,7 +125,7 @@
   template:
     src: sonarqube-nginx.conf.j2
     dest: /etc/nginx/sites-available/sonarqube
-    mode: '0644'
+    mode: "0644"
   notify: restart nginx
 
 - name: Enable SonarQube Nginx site

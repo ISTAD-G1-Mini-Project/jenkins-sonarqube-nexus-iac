@@ -13,6 +13,10 @@
         deb: /tmp/glab.deb
         state: present
 
+# ========================
+# Portainer
+# ========================
+
 - name: Install Portainer
   docker_container:
     name: portainer
@@ -27,6 +31,10 @@
       - portainer_data:/data
     networks:
       - name: app_network
+
+# ========================
+# OhMyZsh
+# ========================
 
 - name: Install OhMyZsh dependencies
   apt:
@@ -47,14 +55,18 @@
   shell: |
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   args:
-    creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+    creates: "/home/{{ ssh_user }}/.oh-my-zsh"
   become: yes
-  become_user: "{{ ansible_user }}"
+  become_user: "{{ ssh_user }}"
 
 - name: Change default shell to zsh for ansible user
   user:
-    name: "{{ ansible_user }}"
+    name: "{{ ssh_user }}"
     shell: /bin/zsh
+
+# ========================
+# Jenkins setup
+# ========================
 
 - name: Create Jenkins directories
   file:
@@ -62,7 +74,7 @@
     state: directory
     owner: "1000"
     group: "1000"
-    mode: '0755'
+    mode: "0755"
   loop:
     - /var/jenkins_home
     - /var/jenkins_home/certs
@@ -84,6 +96,8 @@
       DOCKER_HOST: "tcp://docker:2376"
       DOCKER_CERT_PATH: "/certs/client"
       DOCKER_TLS_VERIFY: "1"
+      JENKINS_ADMIN_ID: "{{ jenkins_admin_user }}"
+      JENKINS_ADMIN_PASSWORD: "{{ jenkins_admin_password }}"
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
     networks:
       - name: app_network
@@ -104,7 +118,7 @@
     state: present
 
 # ========================
-# Nginx + SSL (reordered)
+# Nginx + SSL
 # ========================
 
 - name: Install Nginx
@@ -122,9 +136,9 @@
 
 - name: Configure temporary HTTP-only Nginx site for Jenkins
   template:
-    src: jenkins-http.conf.j2 
+    src: jenkins-http.conf.j2
     dest: /etc/nginx/sites-available/jenkins
-    mode: '0644'
+    mode: "0644"
   notify: restart nginx
 
 - name: Enable Jenkins site
@@ -167,16 +181,26 @@
     timeout: 120
 
 # ========================
-# Jenkins password retrieval
+# Jenkins password retrieval (safe)
 # ========================
 
-- name: Get Jenkins initial admin password
-  shell: docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-  register: jenkins_password
-  changed_when: false
-  ignore_errors: yes
+# - name: Check if initialAdminPassword exists
+#   stat:
+#     path: /var/jenkins_home/secrets/initialAdminPassword
+#   register: jenkins_password_file
 
-- name: Display Jenkins initial password
-  debug:
-    msg: "Jenkins initial admin password: {{ jenkins_password.stdout }}"
-  when: jenkins_password.stdout is defined and jenkins_password.stdout != ""
+# - name: Get Jenkins initial admin password
+#   command: docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+#   register: jenkins_password
+#   retries: 10
+#   delay: 15
+#   until: jenkins_password.rc == 0
+#   when: jenkins_password_file.stat.exists
+
+# - name: Display Jenkins initial password
+#   debug:
+#     msg: "Jenkins initial admin password: {{ jenkins_password.stdout }}"
+#   when:
+#     - jenkins_password_file.stat.exists
+#     - jenkins_password.stdout is defined
+#     - jenkins_password.stdout != ""

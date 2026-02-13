@@ -32,7 +32,7 @@ nexus_domain: "nexus.vuthytourn.shop"
 admin_email: "vuthytuon168@gmail.com"
 
 # SSH Configuration
-ssh_user: "ansible"
+ssh_user: "macbookpro"
 ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
 
 # Tags for resource management
@@ -41,3 +41,5 @@ resource_tags:
   managed_by: "ansible"
   project: "cicd-infrastructure"
 
+jenkins_admin_user: admin
+jenkins_admin_password: changeme123

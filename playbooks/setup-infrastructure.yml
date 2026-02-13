@@ -17,30 +17,36 @@
   hosts: jenkins
   become: yes
   gather_facts: yes
+  vars_files:
+    - ../vars/gcp_vars.yml 
   
   roles:
     - common
     - docker
     - jenkins
 
-- name: Setup Machine02 - SonarQube Server
-  hosts: sonarqube
-  become: yes
-  gather_facts: yes
+# - name: Setup Machine02 - SonarQube Server
+#   hosts: sonarqube
+#   become: yes
+#   gather_facts: yes
+  # vars_files:
+  #     - ../vars/gcp_vars.yml 
   
-  roles:
-    - common
-    - sonarqube
+#   roles:
+#     - common
+#     - sonarqube
 
-- name: Setup Machine03 - Nexus Repository
-  hosts: nexus
-  become: yes
-  gather_facts: yes
+# - name: Setup Machine03 - Nexus Repository
+#   hosts: nexus
+#   become: yes
+#   gather_facts: yes
+  # vars_files:
+  #     - ../vars/gcp_vars.yml 
   
-  roles:
-    - common
-    - docker
-    - nexus
+#   roles:
+#     - common
+#     - docker
+#     - nexus
 
 - name: Infrastructure Setup Complete
   hosts: localhost

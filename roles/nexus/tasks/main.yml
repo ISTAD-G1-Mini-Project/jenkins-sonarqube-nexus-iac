@@ -20,13 +20,13 @@
   shell: |
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   args:
-    creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+    creates: "/home/{{ ssh_user }}/.oh-my-zsh"
   become: yes
-  become_user: "{{ ansible_user }}"
+  become_user: "{{ ssh_user }}"
 
 - name: Change default shell to zsh for ansible user
   user:
-    name: "{{ ansible_user }}"
+    name: "{{ ssh_user }}"
     shell: /bin/zsh
 
 - name: Install Portainer
@@ -50,7 +50,7 @@
     state: directory
     owner: "200"
     group: "200"
-    mode: '0755'
+    mode: "0755"
 
 - name: Create Nexus container (Docker Blob Repository)
   docker_container:
@@ -60,8 +60,8 @@
     restart_policy: always
     ports:
       - "8081:8081"
-      - "8082:8082"  # Docker hosted repository
-      - "8083:8083"  # Docker proxy repository
+      - "8082:8082" # Docker hosted repository
+      - "8083:8083" # Docker proxy repository
     volumes:
       - nexus_data:/nexus-data
     networks:
@@ -96,7 +96,7 @@
 - name: Display Nexus initial password
   debug:
     msg: "Nexus initial admin password: {{ nexus_password.stdout }}"
-  when: 
+  when:
     - admin_password_check.stdout == "exists"
     - nexus_password.stdout is defined
 
@@ -122,7 +122,7 @@
   template:
     src: nexus-nginx.conf.j2
     dest: /etc/nginx/sites-available/nexus
-    mode: '0644'
+    mode: "0644"
   notify: restart nginx
 
 - name: Enable Nexus Nginx site
@@ -142,20 +142,20 @@
   debug:
     msg: |
       Nexus Repository Manager is running at http://{{ ansible_host }}:8081
-      
+
       Default username: admin
       {% if admin_password_check.stdout == "exists" and nexus_password.stdout is defined %}
       Initial password: {{ nexus_password.stdout }}
       {% else %}
       Initial password: Check /nexus-data/admin.password in the container
       {% endif %}
-      
+
       Repository Setup Instructions:
       1. Login with admin credentials
       2. Complete the setup wizard
       3. Create Docker Blob Store repository (uses docker-blob)
       4. Create Helm Blob Store repository (uses helm-blob)
       5. Configure connectors on ports 8082 (Docker) and 8083 (Helm)
-      
+
       Docker Repository will be accessible at: {{ nexus_domain }}:8082
       Helm Repository will be accessible at: {{ nexus_domain }}:8083
