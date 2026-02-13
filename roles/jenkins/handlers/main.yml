@@ -1,0 +1,16 @@
+---
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: reload nginx
+  systemd:
+    name: nginx
+    state: reloaded
+
+- name: restart jenkins
+  docker_container:
+    name: jenkins
+    state: started
+    restart: yes

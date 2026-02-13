@@ -1,0 +1,24 @@
+GCP Infrastructure Created: 2026-02-13T13:17:50Z
+
+Machine01 (Jenkins):
+  Name: jenkins-server
+  Internal IP: 10.0.0.2
+  External IP: 34.50.105.226
+  SSH: ssh ansible@34.50.105.226
+
+Machine02 (SonarQube):
+  Name: sonarqube-server
+  Internal IP: 10.0.0.3
+  External IP: 34.50.114.112
+  SSH: ssh ansible@34.50.114.112
+
+Machine03 (Nexus):
+  Name: nexus-server
+  Internal IP: 10.0.0.4
+  External IP: 34.50.97.169
+  SSH: ssh ansible@34.50.97.169
+
+DNS Records to Create:
+jenkins.vuthytourn.shop A 34.50.105.226
+sonarqube.vuthytourn.shop A 34.50.114.112
+nexus.vuthytourn.shop A 34.50.97.169

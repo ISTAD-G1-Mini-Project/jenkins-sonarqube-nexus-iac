@@ -1,0 +1,43 @@
+---
+# GCP Configuration Variables
+# Edit these values according to your GCP project
+
+# GCP Project Configuration
+gcp_project_id: "winged-memory-485604-r8"
+gcp_service_account_file: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/credential/service-account.json"
+gcp_region: "asia-southeast2"
+gcp_zone: "asia-southeast2-b"
+
+# Network Configuration
+network_name: "ansible-infra-network"
+subnet_name: "ansible-infra-subnet"
+subnet_cidr: "10.0.0.0/24"
+
+# VM Configuration
+machine_type: "e2-standard-2"  # 2 vCPUs, 8GB RAM
+boot_disk_size: 40  # GB
+boot_disk_type: "pd-standard"  # or "pd-ssd" for better performance
+image_family: "ubuntu-2204-lts"
+image_project: "ubuntu-os-cloud"
+
+# Machine Names
+machine01_name: "jenkins-server"
+machine02_name: "sonarqube-server"
+machine03_name: "nexus-server"
+
+# Domain Configuration
+jenkins_domain: "jenkins.vuthytourn.shop"
+sonarqube_domain: "sonarqube.vuthytourn.shop"
+nexus_domain: "nexus.vuthytourn.shop"
+admin_email: "vuthytuon168@gmail.com"
+
+# SSH Configuration
+ssh_user: "ansible"
+ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
+
+# Tags for resource management
+resource_tags:
+  environment: "production"
+  managed_by: "ansible"
+  project: "cicd-infrastructure"
+

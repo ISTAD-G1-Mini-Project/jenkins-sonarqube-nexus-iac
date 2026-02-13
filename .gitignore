@@ -1,0 +1,4 @@
+credential/service-account.json
+
+# Python virtual environment
+.venv/

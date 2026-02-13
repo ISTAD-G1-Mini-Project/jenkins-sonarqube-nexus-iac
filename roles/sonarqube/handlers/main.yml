@@ -1,0 +1,11 @@
+---
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: restart sonarqube
+  docker_container:
+    name: sonarqube
+    state: started
+    restart: yes

@@ -1,0 +1,11 @@
+---
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: restart nexus
+  docker_container:
+    name: nexus-docker
+    state: started
+    restart: yes

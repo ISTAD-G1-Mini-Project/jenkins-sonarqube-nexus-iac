@@ -1,0 +1,149 @@
+---
+# SonarQube role - Setup SonarQube
+
+- name: Install OhMyZsh dependencies
+  apt:
+    name:
+      - zsh
+      - git
+      - curl
+    state: present
+
+- name: Install OhMyZsh for root
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: /root/.oh-my-zsh
+  become: yes
+
+- name: Install OhMyZsh for ansible user
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+  become: yes
+  become_user: "{{ ansible_user }}"
+
+- name: Change default shell to zsh for ansible user
+  user:
+    name: "{{ ansible_user }}"
+    shell: /bin/zsh
+
+- name: Install Portainer
+  docker_container:
+    name: portainer
+    image: portainer/portainer-ce:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "9000:9000"
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - name: app_network
+
+- name: Create SonarQube directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: '0755'
+  loop:
+    - /opt/sonarqube/data
+    - /opt/sonarqube/extensions
+    - /opt/sonarqube/logs
+
+- name: Create PostgreSQL container for SonarQube
+  docker_container:
+    name: sonarqube-db
+    image: postgres:13
+    state: started
+    restart_policy: always
+    env:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonarqube
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - name: app_network
+
+- name: Wait for PostgreSQL to be ready
+  wait_for:
+    timeout: 30
+  delegate_to: localhost
+
+- name: Create SonarQube container
+  docker_container:
+    name: sonarqube
+    image: sonarqube:lts-community
+    state: started
+    restart_policy: always
+    ports:
+      - "9001:9000"
+    env:
+      SONAR_JDBC_URL: "jdbc:postgresql://sonarqube-db:5432/sonarqube"
+      SONAR_JDBC_USERNAME: "sonar"
+      SONAR_JDBC_PASSWORD: "sonar"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - name: app_network
+    ulimits:
+      - nofile:65536:65536
+
+- name: Wait for SonarQube to start
+  wait_for:
+    port: 9001
+    delay: 30
+    timeout: 300
+
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Install Certbot
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Create Nginx configuration for SonarQube
+  template:
+    src: sonarqube-nginx.conf.j2
+    dest: /etc/nginx/sites-available/sonarqube
+    mode: '0644'
+  notify: restart nginx
+
+- name: Enable SonarQube Nginx site
+  file:
+    src: /etc/nginx/sites-available/sonarqube
+    dest: /etc/nginx/sites-enabled/sonarqube
+    state: link
+  notify: restart nginx
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: restart nginx
+
+- name: Display SonarQube information
+  debug:
+    msg: |
+      SonarQube is running at http://{{ ansible_host }}:9001
+      Default credentials: admin/admin
+      Please change the password on first login!

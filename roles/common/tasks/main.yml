@@ -1,0 +1,81 @@
+---
+# Common role - Base setup for all machines
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install common packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - net-tools
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-docker
+      - openssl
+    state: present
+
+- name: Ensure pip docker module is installed
+  pip:
+    name:
+      - docker
+      - docker-compose
+    state: present
+
+- name: Set timezone
+  timezone:
+    name: UTC
+
+- name: Configure firewall (UFW)
+  ufw:
+    state: enabled
+    policy: deny
+  
+- name: Allow SSH through firewall
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Allow HTTP through firewall
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Allow HTTPS through firewall
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Increase system limits for services
+  pam_limits:
+    domain: '*'
+    limit_type: '-'
+    limit_item: nofile
+    value: '65536'
+
+- name: Set vm.max_map_count for SonarQube/Nexus
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
+- name: Create service user for applications
+  user:
+    name: appuser
+    system: yes
+    shell: /bin/bash
+    createhome: yes

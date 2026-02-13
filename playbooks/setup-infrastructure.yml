@@ -1,0 +1,60 @@
+---
+# Main playbook to setup the entire infrastructure
+# Usage: ansible-playbook -i inventory.ini setup-infrastructure.yml
+
+- name: Setup Infrastructure - All Machines
+  hosts: all
+  connection: local 
+  become: yes 
+  gather_facts: yes
+  
+  tasks:
+    - name: Display setup information
+      debug:
+        msg: "Setting up infrastructure across {{ ansible_play_hosts | length }} machines"
+
+- name: Setup Machine01 - Jenkins Server
+  hosts: jenkins
+  become: yes
+  gather_facts: yes
+  
+  roles:
+    - common
+    - docker
+    - jenkins
+
+- name: Setup Machine02 - SonarQube Server
+  hosts: sonarqube
+  become: yes
+  gather_facts: yes
+  
+  roles:
+    - common
+    - sonarqube
+
+- name: Setup Machine03 - Nexus Repository
+  hosts: nexus
+  become: yes
+  gather_facts: yes
+  
+  roles:
+    - common
+    - docker
+    - nexus
+
+- name: Infrastructure Setup Complete
+  hosts: localhost
+  gather_facts: no
+  
+  tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          Infrastructure setup complete!
+          
+          Access your services at:
+          - Jenkins: https://jenkins.yourdomain.com
+          - SonarQube: https://sonarqube.yourdomain.com
+          - Nexus: https://nexus.yourdomain.com
+          
+          Note: Configure your DNS and SSL certificates accordingly.

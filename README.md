@@ -1,0 +1,455 @@
+# GCP Infrastructure Automation with Ansible
+
+Complete automation to **create GCP VMs** and deploy Jenkins, SonarQube, and Nexus with HTTPS.
+
+## 🚀 What This Does
+
+This Ansible project will:
+
+1. ✅ **Create 3 GCP VM instances** automatically
+2. ✅ **Configure networking** (VPC, subnets, firewall rules)
+3. ✅ **Install all software** (Docker, Jenkins, SonarQube, Nexus)
+4. ✅ **Setup HTTPS** with Let's Encrypt SSL certificates
+5. ✅ **Deploy services** in Docker containers
+6. ✅ **Configure reverse proxies** with Nginx
+7. ✅ **Clean destruction** of all resources when done
+
+**Everything from zero to fully working infrastructure in one command!**
+
+## 📋 Prerequisites
+
+### 1. On Your Local Machine
+
+```bash
+# Install Ansible
+sudo apt install ansible  # Ubuntu/Debian
+brew install ansible      # macOS
+
+# Install Python modules
+pip3 install requests google-auth
+
+# Install required Ansible collections
+ansible-galaxy collection install -r requirements.yml
+```
+
+### 2. GCP Setup
+
+#### A. Create/Get Service Account Key
+
+```bash
+# Option 1: Use existing service account
+# Download the JSON key file from GCP Console:
+# IAM & Admin → Service Accounts → Your Service Account → Keys → Add Key
+
+# Option 2: Create new service account via gcloud
+gcloud iam service-accounts create ansible-automation \
+    --display-name="Ansible Automation"
+
+# Grant necessary permissions
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:ansible-automation@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/compute.admin"
+
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:ansible-automation@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountUser"
+
+# Create and download key
+gcloud iam service-accounts keys create ~/gcp-key.json \
+    --iam-account=ansible-automation@YOUR_PROJECT_ID.iam.gserviceaccount.com
+```
+
+#### B. Required GCP APIs
+
+Enable these APIs in your GCP project:
+- Compute Engine API
+- Cloud Resource Manager API
+
+```bash
+gcloud services enable compute.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
+```
+
+### 3. SSH Keys
+
+```bash
+# Generate SSH key pair if you don't have one
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+```
+
+### 4. Domain Names
+
+You need 3 domain names (or subdomains):
+- `jenkins.yourdomain.com`
+- `sonarqube.yourdomain.com`
+- `nexus.yourdomain.com`
+
+### 5. Local Python Environment
+
+We recommend using a **Python virtual environment** to isolate dependencies.
+
+```bash
+# 1. Create a virtual environment
+python3 -m venv .venv
+
+# 2. Activate it
+# macOS / Linux
+source .venv/bin/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# 3. Install required Python packages
+pip install -r requirements.txt
+```
+
+## ⚙️ Configuration
+
+### 1. Edit `gcp_vars.yml`
+
+```yaml
+# GCP Project Configuration
+gcp_project_id: "my-gcp-project-123"
+gcp_service_account_file: "/path/to/your-service-account-key.json"
+gcp_region: "us-central1"
+gcp_zone: "us-central1-a"
+
+# VM Configuration  
+machine_type: "e2-standard-2"  # 2 vCPUs, 8GB RAM
+boot_disk_size: 50  # GB
+
+# Domain Configuration
+jenkins_domain: "jenkins.yourdomain.com"
+sonarqube_domain: "sonarqube.yourdomain.com"
+nexus_domain: "nexus.yourdomain.com"
+admin_email: "admin@yourdomain.com"
+
+# SSH Configuration
+ssh_user: "ansible"
+ssh_public_key_file: "~/.ssh/id_rsa.pub"
+```
+
+### 2. Verify Configuration
+
+```bash
+# Test GCP authentication
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-key.json"
+gcloud auth activate-service-account --key-file=/path/to/your-key.json
+gcloud compute zones list --project=YOUR_PROJECT_ID
+```
+
+## 🎯 Deployment
+
+### One-Command Full Deployment
+
+```bash
+# This creates VMs + installs everything + add domain names
+ansible-playbook playbooks/deploy-all.yml
+```
+
+This single command will:
+1. Create VPC network and subnets
+2. Create firewall rules
+3. Create 3 GCP VM instances
+4. Wait for VMs to be ready
+5. Install Docker on all machines
+6. Deploy Jenkins (Machine01)
+7. Deploy SonarQube (Machine02)
+8. Deploy Nexus (Machine03)
+9. Configure Nginx reverse proxies
+10. Install Certbot for SSL
+
+**Duration**: 15-20 minutes
+
+### Step-by-Step Deployment (Optional)
+
+```bash
+# Step 1: Create VMs only
+ansible-playbook playbooks/create-and-setup-infrastructure.yml
+
+# Step 2: Configure services
+ansible-playbook playbooks/setup-infrastructure.yml
+
+# Step 3: Setup domain/DNS
+ansible-playbook playbooks/setup-domain.yml
+
+# Step 4: Setup SSL (after DNS propagation)
+ansible-playbook playbooks/setup-ssl.yml
+```
+
+## 🌐 DNS Configuration
+
+After VMs are created, you'll see output like:
+
+```
+DNS Records to Create:
+jenkins.yourdomain.com A 34.123.45.67
+sonarqube.yourdomain.com A 34.123.45.68
+nexus.yourdomain.com A 34.123.45.69
+```
+
+**Add these DNS records in your domain provider's control panel.**
+
+### DNS Propagation
+
+Wait 5-60 minutes for DNS to propagate. Check with:
+
+```bash
+nslookup jenkins.yourdomain.com
+dig jenkins.yourdomain.com
+```
+
+## 🔒 SSL Setup
+
+After DNS propagates:
+
+```bash
+ansible-playbook playbooks/setup-ssl.yml
+```
+
+This obtains Let's Encrypt certificates for all domains.
+
+## 🌍 Access Your Services
+
+| Service | URL | Default Credentials |
+|---------|-----|---------------------|
+| Jenkins | https://jenkins.yourdomain.com | admin / [initial password] |
+| SonarQube | https://sonarqube.yourdomain.com | admin / admin |
+| Nexus | https://nexus.yourdomain.com | admin / [initial password] |
+
+### Get Initial Passwords
+
+The playbook saves all information to `vm-info.txt`. Or retrieve manually:
+
+```bash
+# Jenkins password
+ssh ansible@JENKINS_IP "docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword"
+
+# Nexus password
+ssh ansible@NEXUS_IP "docker exec nexus-docker cat /nexus-data/admin.password"
+```
+
+## 🔧 Management
+
+### Check Status
+
+```bash
+ansible-playbook playbooks/verify-infrastructure.yml
+```
+
+### View Logs
+
+```bash
+# SSH to machine
+ssh ansible@MACHINE_IP
+
+# View container logs
+docker logs jenkins
+docker logs sonarqube
+docker logs nexus-docker
+```
+
+### Restart Services
+
+```bash
+# Restart specific service
+ansible machine01 -i inventory.ini -m shell -a "docker restart jenkins" -b
+
+# Restart all services
+ansible all -i inventory.ini -m shell -a "docker restart \$(docker ps -q)" -b
+```
+
+### Backup
+
+```bash
+# Jenkins
+ssh ansible@JENKINS_IP
+docker run --rm -v jenkins_home:/data -v /tmp:/backup ubuntu tar czf /backup/jenkins-backup.tar.gz /data
+
+# SonarQube database
+ssh ansible@SONARQUBE_IP
+docker exec sonarqube-db pg_dump -U sonar sonarqube > sonarqube-backup.sql
+
+# Nexus
+ssh ansible@NEXUS_IP
+docker run --rm -v nexus_data:/data -v /tmp:/backup ubuntu tar czf /backup/nexus-backup.tar.gz /data
+```
+
+## 🗑️ Destroy Infrastructure
+
+**⚠️ WARNING: This permanently deletes everything!**
+
+```bash
+ansible-playbook destroy-gcp-infrastructure.yml
+```
+
+This will:
+1. Stop all Docker containers
+2. Delete all 3 VM instances
+3. Delete firewall rules
+4. Delete VPC network and subnets
+5. Remove all GCP resources
+
+Type `DESTROY` when prompted to confirm.
+
+## 💰 Cost Estimation
+
+Approximate GCP costs (us-central1):
+
+| Resource | Specs | Monthly Cost |
+|----------|-------|--------------|
+| 3x e2-standard-2 | 2 vCPU, 8GB RAM each | ~$120 |
+| 3x 50GB disks | Standard persistent disk | ~$6 |
+| External IPs | 3 static IPs | ~$10 |
+| **Total** | | **~$136/month** |
+
+To reduce costs:
+- Use `e2-medium` (1 vCPU, 4GB) instead of `e2-standard-2`
+- Use preemptible VMs (up to 80% cheaper, but can be terminated)
+- Stop VMs when not in use
+
+## 📁 Project Structure
+
+```
+ansible-gcp-infrastructure/       
+├── ansible.cfg                        # Ansible configuration
+├── requirements.yml                   # Required collections
+├── README.md                          # This file
+├── vars/
+│   └── gcp_vars.yml                             # GCP configuration
+├── playbooks/
+│   ├── create-and-setup-infrastructure.yml      # creates VMs + setup
+│   ├── deploy-all.yml                           # Main playbook ( creates VMs + setup + Add domain names)
+│   ├── destroy-gcp-infrastructure.yml           # Destroy all resources
+│   ├── setup-domain.yml                         # set up domain name
+│   ├── setup-infrastructure.yml                 # Configure existing VMs
+│   ├── setup-ssl.yml                            # SSL certificate setup
+│   └── verify-infrastructure.yml                # Health checks
+└── roles/
+    ├── common/                        # Base configuration
+    ├── docker/                        # Docker installation
+    ├── jenkins/                       # Jenkins setup
+    ├── sonarqube/                     # SonarQube setup
+    └── nexus/                         # Nexus setup
+```
+
+## 🔍 Troubleshooting
+
+### GCP Authentication Issues
+
+```bash
+# Test service account
+gcloud auth activate-service-account --key-file=your-key.json
+gcloud projects list
+
+# Check permissions
+gcloud projects get-iam-policy YOUR_PROJECT_ID
+```
+
+### VM Creation Fails
+
+```bash
+# Check quotas
+gcloud compute project-info describe --project=YOUR_PROJECT_ID
+
+# Verify APIs are enabled
+gcloud services list --enabled
+```
+
+### SSH Connection Issues
+
+```bash
+# Test SSH key
+ssh-add ~/.ssh/id_rsa
+ssh ansible@VM_IP
+
+# Check firewall rules
+gcloud compute firewall-rules list
+```
+
+### Service Not Starting
+
+```bash
+# Check Docker
+ssh ansible@VM_IP
+docker ps -a
+docker logs <container_name>
+
+# Check system resources
+free -h
+df -h
+```
+
+### SSL Certificate Issues
+
+```bash
+# Check DNS resolution
+nslookup jenkins.yourdomain.com
+
+# Manual certificate request
+ssh ansible@JENKINS_IP
+sudo certbot certificates
+sudo certbot renew --dry-run
+```
+
+## 📚 Additional Resources
+
+- [GCP Compute Documentation](https://cloud.google.com/compute/docs)
+- [Ansible GCP Guide](https://docs.ansible.com/ansible/latest/scenario_guides/guide_gce.html)
+- [Jenkins Documentation](https://www.jenkins.io/doc/)
+- [SonarQube Documentation](https://docs.sonarqube.org)
+- [Nexus Documentation](https://help.sonatype.com/repomanager3)
+
+## 🎓 What Gets Installed
+
+### Machine01 (Jenkins)
+- Jenkins (Docker)
+- Docker & Docker Compose
+- Portainer
+- Ansible
+- glab (GitLab CLI)
+- OhMyZsh
+- Nginx
+- Certbot
+
+### Machine02 (SonarQube)
+- SonarQube (Docker)
+- PostgreSQL (Docker)
+- Portainer
+- OhMyZsh  
+- Nginx
+- Certbot
+
+### Machine03 (Nexus)
+- Nexus Repository Manager (Docker)
+- Docker & Docker Compose
+- Portainer
+- OhMyZsh
+- Nginx
+- Certbot
+- Docker Blob Store
+- Helm Blob Store
+
+## 🛡️ Security Features
+
+✅ GCP Firewall rules  
+✅ Ubuntu UFW firewall  
+✅ SSH key authentication only  
+✅ HTTPS/SSL for all services  
+✅ Automatic certificate renewal  
+✅ Service account with minimal permissions  
+✅ Private container networks
+
+## 📝 License
+
+Provided as-is for infrastructure automation.
+
+---
+
+**Ready to deploy?**
+
+1. Edit `gcp_vars.yml`
+2. Run `ansible-playbook create-and-setup-infrastructure.yml`
+3. Configure DNS
+4. Run `ansible-playbook setup-ssl.yml`
+5. Access your services!
