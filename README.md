@@ -292,22 +292,6 @@ This will:
 
 Type `DESTROY` when prompted to confirm.
 
-## 💰 Cost Estimation
-
-Approximate GCP costs (us-central1):
-
-| Resource | Specs | Monthly Cost |
-|----------|-------|--------------|
-| 3x e2-standard-2 | 2 vCPU, 8GB RAM each | ~$120 |
-| 3x 50GB disks | Standard persistent disk | ~$6 |
-| External IPs | 3 static IPs | ~$10 |
-| **Total** | | **~$136/month** |
-
-To reduce costs:
-- Use `e2-medium` (1 vCPU, 4GB) instead of `e2-standard-2`
-- Use preemptible VMs (up to 80% cheaper, but can be terminated)
-- Stop VMs when not in use
-
 ## 📁 Project Structure
 
 ```
@@ -392,14 +376,6 @@ sudo certbot certificates
 sudo certbot renew --dry-run
 ```
 
-## 📚 Additional Resources
-
-- [GCP Compute Documentation](https://cloud.google.com/compute/docs)
-- [Ansible GCP Guide](https://docs.ansible.com/ansible/latest/scenario_guides/guide_gce.html)
-- [Jenkins Documentation](https://www.jenkins.io/doc/)
-- [SonarQube Documentation](https://docs.sonarqube.org)
-- [Nexus Documentation](https://help.sonatype.com/repomanager3)
-
 ## 🎓 What Gets Installed
 
 ### Machine01 (Jenkins)
@@ -429,27 +405,3 @@ sudo certbot renew --dry-run
 - Certbot
 - Docker Blob Store
 - Helm Blob Store
-
-## 🛡️ Security Features
-
-✅ GCP Firewall rules  
-✅ Ubuntu UFW firewall  
-✅ SSH key authentication only  
-✅ HTTPS/SSL for all services  
-✅ Automatic certificate renewal  
-✅ Service account with minimal permissions  
-✅ Private container networks
-
-## 📝 License
-
-Provided as-is for infrastructure automation.
-
----
-
-**Ready to deploy?**
-
-1. Edit `gcp_vars.yml`
-2. Run `ansible-playbook create-and-setup-infrastructure.yml`
-3. Configure DNS
-4. Run `ansible-playbook setup-ssl.yml`
-5. Access your services!
