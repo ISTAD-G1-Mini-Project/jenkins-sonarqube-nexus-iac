@@ -72,6 +72,8 @@
     value: '262144'
     state: present
     reload: yes
+  when: inventory_hostname in 
+        (machines | selectattr('name','in',['sonarqube-server','nexus-server']) | map(attribute='host') | list)
 
 - name: Create service user for applications
   user:

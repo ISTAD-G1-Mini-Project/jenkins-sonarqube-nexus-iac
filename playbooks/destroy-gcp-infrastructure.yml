@@ -1,12 +1,12 @@
 ---
-# Destroy GCP Infrastructure Playbook
-# This will delete ALL GCP resources created by the setup playbook
+# Destroy GCP Infrastructure Playbook (Dynamic)
+# Deletes all VMs, firewall rules, subnet, and network
 # Usage: ansible-playbook destroy-gcp-infrastructure.yml
 
 - name: Confirm Destruction
   hosts: localhost
   gather_facts: no
-  
+
   tasks:
     - name: Warning message
       debug:
@@ -14,7 +14,7 @@
           ⚠⚠⚠ CRITICAL WARNING ⚠⚠⚠
           
           This will PERMANENTLY DELETE:
-          - All 3 GCP VM instances
+          - All GCP VM instances defined in machines
           - All data and configurations
           - Network and firewall rules
           - Everything cannot be recovered!
@@ -25,7 +25,7 @@
       pause:
         prompt: "Type 'DESTROY' to confirm (or Ctrl+C to cancel)"
       register: confirm_destroy
-    
+
     - name: Check confirmation
       fail:
         msg: "Infrastructure destruction cancelled - confirmation not received"
@@ -37,102 +37,59 @@
   gather_facts: no
   ignore_errors: yes
   ignore_unreachable: yes
-  
+
   tasks:
     - name: Stop all Docker containers
       shell: docker stop $(docker ps -aq)
       ignore_errors: yes
-    
+
     - name: Remove all Docker containers
       shell: docker rm -f $(docker ps -aq)
       ignore_errors: yes
-    
+
     - name: Remove all Docker volumes
       shell: docker volume rm $(docker volume ls -q)
       ignore_errors: yes
-    
+
     - name: Remove all Docker networks
       shell: docker network rm $(docker network ls -q)
       ignore_errors: yes
 
-- name: Destroy GCP Resources
+- name: Destroy GCP Resources dynamically
   hosts: localhost
   gather_facts: no
   vars_files:
     - gcp_vars.yml
-  
+
   tasks:
-    - name: Delete Machine01 - Jenkins Server
+    - name: Delete all VMs
       google.cloud.gcp_compute_instance:
-        name: "{{ machine01_name }}"
+        name: "{{ item.name }}"
         zone: "{{ gcp_zone }}"
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: absent
-      register: delete_machine01
-      ignore_errors: yes
-
-    - name: Delete Machine02 - SonarQube Server
-      google.cloud.gcp_compute_instance:
-        name: "{{ machine02_name }}"
-        zone: "{{ gcp_zone }}"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: absent
-      register: delete_machine02
-      ignore_errors: yes
-
-    - name: Delete Machine03 - Nexus Server
-      google.cloud.gcp_compute_instance:
-        name: "{{ machine03_name }}"
-        zone: "{{ gcp_zone }}"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: absent
-      register: delete_machine03
+      loop: "{{ machines }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: deleted_machines
       ignore_errors: yes
 
     - name: Wait for VM deletion to complete
       pause:
         seconds: 30
 
-    - name: Delete Firewall Rule - Services
+    - name: Delete Firewall Rules dynamically
       google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-services"
+        name: "{{ network_name }}-allow-{{ item }}"
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: absent
-      ignore_errors: yes
-
-    - name: Delete Firewall Rule - Portainer
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-portainer"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: absent
-      ignore_errors: yes
-
-    - name: Delete Firewall Rule - HTTP/HTTPS
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-http-https"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: absent
-      ignore_errors: yes
-
-    - name: Delete Firewall Rule - SSH
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-ssh"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: absent
+      loop: "{{ machines | map(attribute='name') | map('split','-') | map('first') | list | unique }}"
+      loop_control:
+        label: "{{ item }}"
       ignore_errors: yes
 
     - name: Delete Subnet
@@ -173,31 +130,27 @@
           Infrastructure Destruction Complete!
           ==========================================
           
-          Deleted Resources:
-          - Machine01 (Jenkins): {{ 'SUCCESS' if delete_machine01 is succeeded else 'FAILED/NOT FOUND' }}
-          - Machine02 (SonarQube): {{ 'SUCCESS' if delete_machine02 is succeeded else 'FAILED/NOT FOUND' }}
-          - Machine03 (Nexus): {{ 'SUCCESS' if delete_machine03 is succeeded else 'FAILED/NOT FOUND' }}
-          - Firewall rules: Removed
-          - VPC Network: Removed
-          - Subnet: Removed
+          Deleted Machines:
+          {% for machine, result in machines|zip(deleted_machines.results) %}
+          - {{ machine.name }}: {{ 'SUCCESS' if result is succeeded else 'FAILED/NOT FOUND' }}
+          {% endfor %}
           
-          All GCP resources have been destroyed.
-          
-          Note: DNS records must be manually removed if configured.
-          Check your GCP Console to verify all resources are deleted.
+          Firewall rules, Subnet, and VPC Network removed.
+          DNS records must be manually removed if configured.
 
     - name: Save destruction log
       copy:
         content: |
           GCP Infrastructure Destroyed: {{ ansible_date_time.iso8601 }}
           
-          Resources Deleted:
-          - {{ machine01_name }} (Jenkins)
-          - {{ machine02_name }} (SonarQube)
-          - {{ machine03_name }} (Nexus)
-          - Network: {{ network_name }}
-          - Subnet: {{ subnet_name }}
-          - All firewall rules
+          Deleted Machines:
+          {% for machine, result in machines|zip(deleted_machines.results) %}
+          - {{ machine.name }}
+          {% endfor %}
+          
+          Network: {{ network_name }}
+          Subnet: {{ subnet_name }}
+          Firewall rules removed
           
           Manual cleanup required:
           - DNS records (if configured)

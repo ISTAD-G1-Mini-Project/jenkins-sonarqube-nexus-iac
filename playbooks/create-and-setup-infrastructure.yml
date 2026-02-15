@@ -20,7 +20,10 @@
           - Project: {{ gcp_project_id }}
           - Region: {{ gcp_region }}
           - Zone: {{ gcp_zone }}
-          - Machines: {{ machine01_name }}, {{ machine02_name }}, {{ machine03_name }}
+          - Machines:
+          {% for machine in machines %}
+            - {{ machine.name }} ({{ machine.domains[0] }})
+          {% endfor %}
 
     - name: Ensure GCP service account file exists
       stat:
@@ -50,79 +53,14 @@
         state: present
       register: subnet
 
-    - name: Create Firewall Rule - Allow SSH
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-ssh"
-        network: "{{ network }}"
-        allowed:
-          - ip_protocol: tcp
-            ports:
-              - '22'
-        source_ranges:
-          - '0.0.0.0/0'
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: present
-
-    - name: Create Firewall Rule - Allow HTTP/HTTPS
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-http-https"
-        network: "{{ network }}"
-        allowed:
-          - ip_protocol: tcp
-            ports:
-              - '80'
-              - '443'
-        source_ranges:
-          - '0.0.0.0/0'
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: present
-
-    - name: Create Firewall Rule - Allow Portainer
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-portainer"
-        network: "{{ network }}"
-        allowed:
-          - ip_protocol: tcp
-            ports:
-              - '9000'
-        source_ranges:
-          - '0.0.0.0/0'
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: present
-
-    - name: Create Firewall Rule - Allow Jenkins, SonarQube, Nexus ports
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-services"
-        network: "{{ network }}"
-        allowed:
-          - ip_protocol: tcp
-            ports:
-              - '8080'  # Jenkins
-              - '8081'  # Nexus
-              - '8082'  # Docker registry
-              - '8083'  # Helm registry
-              - '9001'  # SonarQube
-        source_ranges:
-          - '0.0.0.0/0'
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: present
-
     - name: Read SSH public key
       slurp:
         src: "{{ ssh_public_key_file }}"
       register: ssh_key_content
 
-    - name: Create Machine01 - Jenkins Server
+    - name: Create all machines dynamically
       google.cloud.gcp_compute_instance:
-        name: "{{ machine01_name }}"
+        name: "{{ item.name }}"
         machine_type: "{{ machine_type }}"
         zone: "{{ gcp_zone }}"
         project: "{{ gcp_project_id }}"
@@ -141,91 +79,52 @@
             access_configs:
               - name: External NAT
                 type: ONE_TO_ONE_NAT
+                # Use existing IP if available
+                # natIP: "{{ existing_ips[item.name] | default(omit) }}"
         metadata:
           ssh-keys: "{{ ssh_user }}:{{ ssh_key_content.content | b64decode }}"
         tags:
           items:
-            - jenkins
+            - "{{ item.name.split('-')[0] }}"  # e.g., jenkins, sonarqube, nexus
             - http-server
             - https-server
         labels: "{{ resource_tags }}"
         state: present
-      register: machine01
+      loop: "{{ machines }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: created_machines
 
-    - name: Create Machine02 - SonarQube Server
-      google.cloud.gcp_compute_instance:
-        name: "{{ machine02_name }}"
-        machine_type: "{{ machine_type }}"
-        zone: "{{ gcp_zone }}"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        disks:
-          - auto_delete: true
-            boot: true
-            initialize_params:
-              disk_size_gb: "{{ boot_disk_size }}"
-              disk_type: "{{ boot_disk_type }}"
-              source_image: "projects/{{ image_project }}/global/images/family/{{ image_family }}"
-        network_interfaces:
-          - network: "{{ network }}"
-            subnetwork: "{{ subnet }}"
-            access_configs:
-              - name: External NAT
-                type: ONE_TO_ONE_NAT
-        metadata:
-          ssh-keys: "{{ ssh_user }}:{{ ssh_key_content.content | b64decode }}"
-        tags:
-          items:
-            - sonarqube
-            - http-server
-            - https-server
-        labels: "{{ resource_tags }}"
-        state: present
-      register: machine02
-
-    - name: Create Machine03 - Nexus Server
-      google.cloud.gcp_compute_instance:
-        name: "{{ machine03_name }}"
-        machine_type: "{{ machine_type }}"
-        zone: "{{ gcp_zone }}"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        disks:
-          - auto_delete: true
-            boot: true
-            initialize_params:
-              disk_size_gb: "{{ boot_disk_size }}"
-              disk_type: "{{ boot_disk_type }}"
-              source_image: "projects/{{ image_project }}/global/images/family/{{ image_family }}"
-        network_interfaces:
-          - network: "{{ network }}"
-            subnetwork: "{{ subnet }}"
-            access_configs:
-              - name: External NAT
-                type: ONE_TO_ONE_NAT
-        metadata:
-          ssh-keys: "{{ ssh_user }}:{{ ssh_key_content.content | b64decode }}"
-        tags:
-          items:
-            - nexus
-            - http-server
-            - https-server
-        labels: "{{ resource_tags }}"
-        state: present
-      register: machine03
-
-    - name: Wait for SSH to become available on all machines
+    - name: Wait for SSH on all machines
       wait_for:
         host: "{{ item }}"
         port: 22
         delay: 10
         timeout: 300
-      loop:
-        - "{{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}"
-        - "{{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}"
-        - "{{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}"
+      loop: "{{ created_machines.results | map(attribute='networkInterfaces') 
+                                  | map('first') 
+                                  | map(attribute='accessConfigs') 
+                                  | map('first') 
+                                  | map(attribute='natIP') 
+                                  | list }}"
+
+    - name: Create Firewall Rules dynamically per machine type
+      google.cloud.gcp_compute_firewall:
+        name: "{{ network_name }}-allow-{{ item | replace('_','-') }}"
+        network: "{{ network }}"
+        allowed:
+          - ip_protocol: tcp
+            ports: "{{ service_ports[item] }}"
+        source_ranges:
+          - '0.0.0.0/0'
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: present
+      loop: "{{ machines | map(attribute='host') | unique }}"
+      loop_control:
+        label: "{{ item }}"
+
 
     - name: Create dynamic inventory file
       copy:
@@ -235,20 +134,17 @@
           ansible_ssh_private_key_file=~/.ssh/id_rsa
           ansible_python_interpreter=/usr/bin/python3
           ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-          
-          jenkins_domain={{ jenkins_domain }}
-          sonarqube_domain={{ sonarqube_domain }}
-          nexus_domain={{ nexus_domain }}
           admin_email={{ admin_email }}
-          
-          [jenkins_group]
-          jenkins ansible_host={{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          [sonarqube_group]
-          sonarqube ansible_host={{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          [nexus_group]
-          nexus ansible_host={{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}
+
+          {% for machine in machines %}
+          {{ machine.host }}_domain={{ machine.domains[0] }}
+          {% endfor %}
+
+          {% for machine, result in machines|zip(created_machines.results) %}
+          [{{ machine.host }}]
+          {{ machine.name }} ansible_host={{ result.networkInterfaces[0].accessConfigs[0].natIP }}
+
+          {% endfor %}
         dest: inventory.ini
         mode: '0644'
 
@@ -256,58 +152,24 @@
       debug:
         msg: |
           VMs Created Successfully!
-          
-          Machine01 (Jenkins):
-            - Name: {{ machine01_name }}
-            - Internal IP: {{ machine01.networkInterfaces[0].networkIP }}
-            - External IP: {{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          Machine02 (SonarQube):
-            - Name: {{ machine02_name }}
-            - Internal IP: {{ machine02.networkInterfaces[0].networkIP }}
-            - External IP: {{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          Machine03 (Nexus):
-            - Name: {{ machine03_name }}
-            - Internal IP: {{ machine03.networkInterfaces[0].networkIP }}
-            - External IP: {{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          DNS Configuration Required:
-          {{ jenkins_domain }} -> {{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}
-          {{ sonarqube_domain }} -> {{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}
-          {{ nexus_domain }} -> {{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          Inventory file created: ./inventory.ini
-          
-          Next: Run the setup playbook to configure the VMs
+          {% for machine, result in machines|zip(created_machines.results) %}
+          {{ machine.name }}:
+            - Internal IP: {{ result.networkInterfaces[0].networkIP }}
+            - External IP: {{ result.networkInterfaces[0].accessConfigs[0].natIP }}
+            - Domain: {{ machine.domains[0] }}
+          {% endfor %}
 
     - name: Save VM information to file
       copy:
         content: |
           GCP Infrastructure Created: {{ ansible_date_time.iso8601 }}
-          
-          Machine01 (Jenkins):
-            Name: {{ machine01_name }}
-            Internal IP: {{ machine01.networkInterfaces[0].networkIP }}
-            External IP: {{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}
-            SSH: ssh {{ ssh_user }}@{{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          Machine02 (SonarQube):
-            Name: {{ machine02_name }}
-            Internal IP: {{ machine02.networkInterfaces[0].networkIP }}
-            External IP: {{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}
-            SSH: ssh {{ ssh_user }}@{{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          Machine03 (Nexus):
-            Name: {{ machine03_name }}
-            Internal IP: {{ machine03.networkInterfaces[0].networkIP }}
-            External IP: {{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}
-            SSH: ssh {{ ssh_user }}@{{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}
-          
-          DNS Records to Create:
-          {{ jenkins_domain }} A {{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}
-          {{ sonarqube_domain }} A {{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}
-          {{ nexus_domain }} A {{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}
+          {% for machine, result in machines|zip(created_machines.results) %}
+          {{ machine.name }}:
+            Internal IP: {{ result.networkInterfaces[0].networkIP }}
+            External IP: {{ result.networkInterfaces[0].accessConfigs[0].natIP }}
+            SSH: ssh {{ ssh_user }}@{{ result.networkInterfaces[0].accessConfigs[0].natIP }}
+            Domain: {{ machine.domains[0] }}
+          {% endfor %}
         dest: ./vm-info.txt
         mode: '0644'
 
@@ -317,7 +179,6 @@
 - name: Complete
   hosts: localhost
   gather_facts: no
-  
   tasks:
     - name: Final message
       debug:

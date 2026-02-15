@@ -1,24 +1,16 @@
-GCP Infrastructure Created: 2026-02-13T14:39:17Z
-
-Machine01 (Jenkins):
-  Name: jenkins-server
+GCP Infrastructure Created: 2026-02-15T12:47:27Z
+jenkins-server:
   Internal IP: 10.0.0.2
   External IP: 34.50.105.226
   SSH: ssh macbookpro@34.50.105.226
-
-Machine02 (SonarQube):
-  Name: sonarqube-server
+  Domain: jenkins.vuthytourn.shop
+sonarqube-server:
   Internal IP: 10.0.0.3
   External IP: 34.50.114.112
   SSH: ssh macbookpro@34.50.114.112
-
-Machine03 (Nexus):
-  Name: nexus-server
+  Domain: sonarqube.vuthytourn.shop
+nexus-server:
   Internal IP: 10.0.0.4
   External IP: 34.50.97.169
   SSH: ssh macbookpro@34.50.97.169
-
-DNS Records to Create:
-jenkins.vuthytourn.shop A 34.50.105.226
-sonarqube.vuthytourn.shop A 34.50.114.112
-nexus.vuthytourn.shop A 34.50.97.169
+  Domain: nexus.vuthytourn.shop

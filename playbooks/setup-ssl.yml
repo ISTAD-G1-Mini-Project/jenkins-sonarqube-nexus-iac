@@ -1,164 +1,54 @@
----
-# SSL Certificate Setup Playbook
-# This should be run AFTER the main setup and DNS is configured
-# Usage: ansible-playbook -i inventory.ini setup-ssl.yml
-
-- name: Setup SSL Certificates with Let's Encrypt
-  hosts: localhost
-  become: yes
-  connection: local
-  gather_facts: yes
-  
-  tasks:
-    # - name: Ensure DNS is configured
-    #   pause:
-    #     prompt: |
-    #       Before proceeding, ensure that:
-    #       1. DNS A records are configured for all domains
-    #       2. Domains are pointing to the correct IP addresses
-    #       3. Ports 80 and 443 are accessible from the internet
-          
-    #       Press ENTER to continue or Ctrl+C to abort
-
-- name: Setup Jenkins SSL Certificate
-  hosts: machine01
+- name: Setup SSL Certificates on all servers
+  hosts: jenkins_group,sonarqube_group,nexus_group
   become: yes
   gather_facts: yes
-  
+  vars_files:
+    - ../vars/gcp_vars.yml
+
   tasks:
-    - name: Obtain SSL certificate for Jenkins
+    - name: Obtain SSL certificate via Certbot
       command: >
         certbot --nginx
-        -d {{ jenkins_domain }}
+        -d {{ item.domains | join(' -d ') }}
         --non-interactive
         --agree-tos
         --email {{ admin_email }}
         --redirect
-      register: certbot_jenkins
-      changed_when: "'Successfully received certificate' in certbot_jenkins.stdout"
-      failed_when: 
-        - certbot_jenkins.rc != 0
-        - "'Certificate not yet due for renewal' not in certbot_jenkins.stdout"
-    
-    - name: Reload Nginx for Jenkins
+      loop: "{{ machines }}"
+      when: inventory_hostname in groups[item.host]
+      register: certbot_result
+      changed_when: "certbot_result.stdout is defined and 'Successfully received certificate' in certbot_result.stdout"
+      failed_when:
+        - certbot_result.rc is defined
+        - certbot_result.rc != 0
+        - "'Certificate not yet due for renewal' not in certbot_result.stdout"
+
+    - name: Reload Nginx
       systemd:
         name: nginx
         state: reloaded
 
-- name: Setup SonarQube SSL Certificate
-  hosts: machine02
-  become: yes
-  gather_facts: yes
-  
-  tasks:
-    - name: Obtain SSL certificate for SonarQube
-      command: >
-        certbot --nginx
-        -d {{ sonarqube_domain }}
-        --non-interactive
-        --agree-tos
-        --email {{ admin_email }}
-        --redirect
-      register: certbot_sonarqube
-      changed_when: "'Successfully received certificate' in certbot_sonarqube.stdout"
-      failed_when: 
-        - certbot_sonarqube.rc != 0
-        - "'Certificate not yet due for renewal' not in certbot_sonarqube.stdout"
-    
-    - name: Reload Nginx for SonarQube
-      systemd:
-        name: nginx
-        state: reloaded
-
-- name: Setup Nexus SSL Certificates
-  hosts: machine03
-  become: yes
-  gather_facts: yes
-  
-  tasks:
-    - name: Obtain SSL certificate for Nexus main domain
-      command: >
-        certbot --nginx
-        -d {{ nexus_domain }}
-        --non-interactive
-        --agree-tos
-        --email {{ admin_email }}
-        --redirect
-      register: certbot_nexus
-      changed_when: "'Successfully received certificate' in certbot_nexus.stdout"
-      failed_when: 
-        - certbot_nexus.rc != 0
-        - "'Certificate not yet due for renewal' not in certbot_nexus.stdout"
-    
-    - name: Obtain SSL certificate for Docker registry
-      command: >
-        certbot --nginx
-        -d docker.{{ nexus_domain }}
-        --non-interactive
-        --agree-tos
-        --email {{ admin_email }}
-        --redirect
-      register: certbot_docker
-      changed_when: "'Successfully received certificate' in certbot_docker.stdout"
-      failed_when: 
-        - certbot_docker.rc != 0
-        - "'Certificate not yet due for renewal' not in certbot_docker.stdout"
-    
-    - name: Obtain SSL certificate for Helm registry
-      command: >
-        certbot --nginx
-        -d helm.{{ nexus_domain }}
-        --non-interactive
-        --agree-tos
-        --email {{ admin_email }}
-        --redirect
-      register: certbot_helm
-      changed_when: "'Successfully received certificate' in certbot_helm.stdout"
-      failed_when: 
-        - certbot_helm.rc != 0
-        - "'Certificate not yet due for renewal' not in certbot_helm.stdout"
-    
-    - name: Reload Nginx for Nexus
-      systemd:
-        name: nginx
-        state: reloaded
-
-- name: Setup Certificate Auto-Renewal
-  hosts: localhost
-  become: yes
-  connection: local
-  gather_facts: yes
-  
-  tasks:
-    - name: Test certbot renewal
-      command: certbot renew --dry-run
-      changed_when: false
-    
-    - name: Display renewal cron job
-      debug:
-        msg: |
-          Certbot auto-renewal is configured via systemd timer.
-          Check status with: systemctl status certbot.timer
-          
-          Certificates will auto-renew when they have 30 days or less remaining.
+# - name: Test certificate auto-renewal
+#   hosts: jenkins_group,sonarqube_group,nexus_group
+#   become: yes
+#   gather_facts: no
+#   tasks:
+#     - name: Test certbot renewal
+#       command: certbot renew --dry-run
+#       changed_when: false
 
 - name: SSL Setup Complete
   hosts: localhost
-  become: yes
   connection: local
   gather_facts: no
   vars_files:
     - ../vars/gcp_vars.yml
-  
   tasks:
     - name: Display completion message
       debug:
         msg: |
           SSL certificates have been successfully configured!
-          
-          Your services are now accessible at:
-          - Jenkins: https://{{ jenkins_domain }}
-          - SonarQube: https://{{ sonarqube_domain }}
-          - Nexus: https://{{ nexus_domain }}
-          
+          - Jenkins: https://{{ machines[0].domains[0] }}
+          - SonarQube: https://{{ machines[1].domains[0] }}
+          - Nexus: https://{{ machines[2].domains[0] }}
           Certificates will automatically renew before expiration.

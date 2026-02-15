@@ -1,49 +1,6 @@
 ---
 # Nexus role - Setup Nexus Repository Manager
 
-- name: Install OhMyZsh dependencies
-  apt:
-    name:
-      - zsh
-      - git
-      - curl
-    state: present
-
-- name: Install OhMyZsh for root
-  shell: |
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-  args:
-    creates: /root/.oh-my-zsh
-  become: yes
-
-- name: Install OhMyZsh for ansible user
-  shell: |
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-  args:
-    creates: "/home/{{ ssh_user }}/.oh-my-zsh"
-  become: yes
-  become_user: "{{ ssh_user }}"
-
-- name: Change default shell to zsh for ansible user
-  user:
-    name: "{{ ssh_user }}"
-    shell: /bin/zsh
-
-- name: Install Portainer
-  docker_container:
-    name: portainer
-    image: portainer/portainer-ce:latest
-    state: started
-    restart_policy: always
-    ports:
-      - "9000:9000"
-      - "8000:8000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    networks:
-      - name: app_network
-
 - name: Create Nexus data directory
   file:
     path: /opt/nexus-data

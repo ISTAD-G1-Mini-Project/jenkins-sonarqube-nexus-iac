@@ -3,41 +3,31 @@
   gather_facts: no
   become: true
   connection: local
-  vars:
-    jenkins_ip: "{{ machine01.networkInterfaces[0].accessConfigs[0].natIP }}"
-    sonarqube_ip: "{{ machine02.networkInterfaces[0].accessConfigs[0].natIP }}"
-    nexus_ip: "{{ machine03.networkInterfaces[0].accessConfigs[0].natIP }}"
   vars_files:
     - ../vars/cloudflare_vars.yml
     - ../vars/secrets.yml
+    - ../vars/gcp_vars.yml
+  vars:
+    # This assumes you have created_machines from the previous playbook
+    machine_ips: "{{ machines | zip(created_machines.results) | map('combine') | list }}"
+    # Result: a list of dicts where each dict has 'name', 'host', 'domains', and the 'natIP'
 
   tasks:
-    - name: Create Jenkins DNS record
+    - name: Create DNS records dynamically
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
-        record: "jenkins"
+        record: "{{ item.domains[0].split('.')[0] }}"  # Use the first part of the domain as record
         type: "A"
-        value: "{{ jenkins_ip }}"
+        value: "{{ item.natIP }}"
         ttl: 120
         proxied: false
         api_token: "{{ cloudflare_api_token }}"
-
-    - name: Create SonarQube DNS record
-      community.general.cloudflare_dns:
-        zone: "{{ cloudflare_zone }}"
-        record: "sonar"
-        type: "A"
-        value: "{{ sonarqube_ip }}"
-        ttl: 120
-        proxied: false
-        api_token: "{{ cloudflare_api_token }}"
-
-    - name: Create Nexus DNS record
-      community.general.cloudflare_dns:
-        zone: "{{ cloudflare_zone }}"
-        record: "nexus"
-        type: "A"
-        value: "{{ nexus_ip }}"
-        ttl: 120
-        proxied: false
-        api_token: "{{ cloudflare_api_token }}"
+      loop: >
+        {%- set result_list = [] -%}
+        {%- for machine, gcp_result in machines|zip(created_machines.results) -%}
+        {%- set _ = machine.update({'natIP': gcp_result.networkInterfaces[0].accessConfigs[0].natIP}) -%}
+        {%- set _ = result_list.append(machine) -%}
+        {%- endfor -%}
+        {{ result_list }}
+      loop_control:
+        label: "{{ item.name }}"

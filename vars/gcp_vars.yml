@@ -20,16 +20,55 @@ boot_disk_type: "pd-standard"  # or "pd-ssd" for better performance
 image_family: "ubuntu-2204-lts"
 image_project: "ubuntu-os-cloud"
 
-# Machine Names
-machine01_name: "jenkins-server"
-machine02_name: "sonarqube-server"
-machine03_name: "nexus-server"
-
-# Domain Configuration
-jenkins_domain: "jenkins.vuthytourn.shop"
-sonarqube_domain: "sonarqube.vuthytourn.shop"
-nexus_domain: "nexus.vuthytourn.shop"
 admin_email: "vuthytuon168@gmail.com"
+
+machines:
+  - name: jenkins-server
+    host: jenkins_group
+    domains:
+      - jenkins.vuthytourn.shop
+
+  - name: sonarqube-server
+    host: sonarqube_group
+    domains:
+      - sonarqube.vuthytourn.shop
+
+  - name: nexus-server
+    host: nexus_group
+    domains:
+      - nexus.vuthytourn.shop
+
+service_containers:
+  jenkins_group:
+    - jenkins
+    - portainer
+  sonarqube_group:
+    - sonarqube
+    - sonarqube-db
+    - portainer
+  nexus_group:
+    - nexus-docker
+    - portainer
+
+service_ports:
+  jenkins_group:
+    - 8080
+  sonarqube_group:
+    - 9001
+  nexus_group:
+    - 8081
+    - 8082
+    - 8083
+nginx_services:
+  - name: jenkins
+    domain: jenkins.vuthytourn.shop
+    http_port: 8080
+  - name: sonarqube
+    domain: sonarqube.vuthytourn.shop
+    http_port: 9001
+  - name: nexus
+    domain: nexus.vuthytourn.shop
+    http_port: 8081
 
 # SSH Configuration
 ssh_user: "macbookpro"

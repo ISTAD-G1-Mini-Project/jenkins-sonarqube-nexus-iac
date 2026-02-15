@@ -1,0 +1,28 @@
+
+- name: Install OhMyZsh dependencies
+  apt:
+    name:
+      - zsh
+      - git
+      - curl
+    state: present
+
+- name: Install OhMyZsh for root
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: /root/.oh-my-zsh
+  become: yes
+
+- name: Install OhMyZsh for ansible user
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: "/home/{{ ssh_user }}/.oh-my-zsh"
+  become: yes
+  become_user: "{{ ssh_user }}"
+
+- name: Change default shell to zsh for ansible user
+  user:
+    name: "{{ ssh_user }}"
+    shell: /bin/zsh

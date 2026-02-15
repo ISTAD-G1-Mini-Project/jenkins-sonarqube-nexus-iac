@@ -14,57 +14,6 @@
         state: present
 
 # ========================
-# Portainer
-# ========================
-
-- name: Install Portainer
-  docker_container:
-    name: portainer
-    image: portainer/portainer-ce:latest
-    state: started
-    restart_policy: always
-    ports:
-      - "9000:9000"
-      - "8000:8000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    networks:
-      - name: app_network
-
-# ========================
-# OhMyZsh
-# ========================
-
-- name: Install OhMyZsh dependencies
-  apt:
-    name:
-      - zsh
-      - git
-      - curl
-    state: present
-
-- name: Install OhMyZsh for root
-  shell: |
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-  args:
-    creates: /root/.oh-my-zsh
-  become: yes
-
-- name: Install OhMyZsh for ansible user
-  shell: |
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-  args:
-    creates: "/home/{{ ssh_user }}/.oh-my-zsh"
-  become: yes
-  become_user: "{{ ssh_user }}"
-
-- name: Change default shell to zsh for ansible user
-  user:
-    name: "{{ ssh_user }}"
-    shell: /bin/zsh
-
-# ========================
 # Jenkins setup
 # ========================
 
@@ -118,67 +67,67 @@
     state: present
 
 # ========================
-# Nginx + SSL
+#  SSL
 # ========================
 
-- name: Install Nginx
-  apt:
-    name: nginx
-    state: present
-    update_cache: yes
+# - name: Install Nginx
+#   apt:
+#     name: nginx
+#     state: present
+#     update_cache: yes
 
-- name: Install Certbot
-  apt:
-    name:
-      - certbot
-      - python3-certbot-nginx
-    state: present
+# - name: Install Certbot
+#   apt:
+#     name:
+#       - certbot
+#       - python3-certbot-nginx
+#     state: present
 
-- name: Configure temporary HTTP-only Nginx site for Jenkins
-  template:
-    src: jenkins-http.conf.j2
-    dest: /etc/nginx/sites-available/jenkins
-    mode: "0644"
-  notify: restart nginx
+# - name: Configure temporary HTTP-only Nginx site for Jenkins
+#   template:
+#     src: jenkins-http.conf.j2
+#     dest: /etc/nginx/sites-available/jenkins
+#     mode: "0644"
+#   notify: restart nginx
 
-- name: Enable Jenkins site
-  file:
-    src: /etc/nginx/sites-available/jenkins
-    dest: /etc/nginx/sites-enabled/jenkins
-    state: link
-  notify: restart nginx
+# - name: Enable Jenkins site
+#   file:
+#     src: /etc/nginx/sites-available/jenkins
+#     dest: /etc/nginx/sites-enabled/jenkins
+#     state: link
+#   notify: restart nginx
 
-- name: Remove default Nginx site
-  file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  notify: restart nginx
+# - name: Remove default Nginx site
+#   file:
+#     path: /etc/nginx/sites-enabled/default
+#     state: absent
+#   notify: restart nginx
 
-- name: Start and enable Nginx
-  systemd:
-    name: nginx
-    state: started
-    enabled: yes
+# - name: Start and enable Nginx
+#   systemd:
+#     name: nginx
+#     state: started
+#     enabled: yes
 
-- name: Wait for HTTP to be ready
-  wait_for:
-    host: 127.0.0.1
-    port: 80
-    delay: 5
-    timeout: 60
+# - name: Wait for HTTP to be ready
+#   wait_for:
+#     host: 127.0.0.1
+#     port: 80
+#     delay: 5
+#     timeout: 60
 
-- name: Obtain SSL certificate via Certbot
-  shell: certbot --nginx -d {{ jenkins_domain }} --non-interactive --agree-tos -m {{ admin_email }}
-  register: certbot_result
-  changed_when: certbot_result.rc == 0
-  notify: reload nginx
+# - name: Obtain SSL certificate via Certbot
+#   shell: certbot --nginx -d {{ jenkins_domain }} --non-interactive --agree-tos -m {{ admin_email }}
+#   register: certbot_result
+#   changed_when: certbot_result.rc == 0
+#   notify: reload nginx
 
-- name: Wait for HTTPS to be ready
-  wait_for:
-    host: 127.0.0.1
-    port: 443
-    delay: 5
-    timeout: 120
+# - name: Wait for HTTPS to be ready
+#   wait_for:
+#     host: 127.0.0.1
+#     port: 443
+#     delay: 5
+#     timeout: 120
 
 # ========================
 # Jenkins password retrieval (safe)

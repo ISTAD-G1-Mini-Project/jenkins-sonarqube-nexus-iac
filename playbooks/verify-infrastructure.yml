@@ -1,5 +1,5 @@
 ---
-# Verification playbook to check infrastructure status
+# Dynamic Verification Playbook
 # Usage: ansible-playbook -i inventory.ini playbooks/verify-infrastructure.yml
 
 - name: Verify Infrastructure Health
@@ -8,7 +8,7 @@
   gather_facts: yes
   
   tasks:
-    - name: Display machine information
+    - name: Display machine info
       debug:
         msg: |
           Hostname: {{ ansible_hostname }}
@@ -16,187 +16,77 @@
           IP: {{ ansible_default_ipv4.address }}
           Memory: {{ ansible_memtotal_mb }} MB
 
-- name: Verify Machine01 - Jenkins
-  hosts: machine01
+- name: Verify Services on all machines dynamically
+  hosts: all
   become: yes
   gather_facts: yes
-  
-  tasks:
-    - name: Check Docker is running
-      systemd:
-        name: docker
-      register: docker_status
-    
-    - name: Check Jenkins container
-      docker_container_info:
-        name: jenkins
-      register: jenkins_container
-    
-    - name: Check Portainer container
-      docker_container_info:
-        name: portainer
-      register: portainer_container
-    
-    - name: Check Nginx status
-      systemd:
-        name: nginx
-      register: nginx_status
-    
-    - name: Check if Jenkins port is listening
-      wait_for:
-        port: 8080
-        timeout: 5
-      register: jenkins_port
-      ignore_errors: yes
-    
-    - name: Check glab installation
-      command: glab version
-      register: glab_check
-      changed_when: false
-      ignore_errors: yes
-    
-    - name: Check Ansible installation
-      command: ansible --version
-      register: ansible_check
-      changed_when: false
-      ignore_errors: yes
-    
-    - name: Display Jenkins status
-      debug:
-        msg: |
-          Docker: {{ docker_status.status.ActiveState }}
-          Jenkins Container: {{ jenkins_container.exists | ternary('Running', 'Not Found') }}
-          Portainer Container: {{ portainer_container.exists | ternary('Running', 'Not Found') }}
-          Nginx: {{ nginx_status.status.ActiveState }}
-          Jenkins Port 8080: {{ jenkins_port.failed | ternary('Not Listening', 'Listening') }}
-          glab: {{ glab_check.rc == 0 | ternary('Installed', 'Not Installed') }}
-          Ansible: {{ ansible_check.rc == 0 | ternary('Installed', 'Not Installed') }}
+  vars_files:
+    - ../vars/gcp_vars.yml
 
-- name: Verify Machine02 - SonarQube
-  hosts: machine02
-  become: yes
-  gather_facts: yes
-  
   tasks:
     - name: Check Docker is running
       systemd:
         name: docker
       register: docker_status
-    
-    - name: Check SonarQube container
-      docker_container_info:
-        name: sonarqube
-      register: sonarqube_container
-    
-    - name: Check PostgreSQL container
-      docker_container_info:
-        name: sonarqube-db
-      register: postgres_container
-    
-    - name: Check Portainer container
-      docker_container_info:
-        name: portainer
-      register: portainer_container
-    
-    - name: Check Nginx status
-      systemd:
-        name: nginx
-      register: nginx_status
-    
-    - name: Check if SonarQube port is listening
-      wait_for:
-        port: 9001
-        timeout: 5
-      register: sonarqube_port
-      ignore_errors: yes
-    
-    - name: Display SonarQube status
-      debug:
-        msg: |
-          Docker: {{ docker_status.status.ActiveState }}
-          SonarQube Container: {{ sonarqube_container.exists | ternary('Running', 'Not Found') }}
-          PostgreSQL Container: {{ postgres_container.exists | ternary('Running', 'Not Found') }}
-          Portainer Container: {{ portainer_container.exists | ternary('Running', 'Not Found') }}
-          Nginx: {{ nginx_status.status.ActiveState }}
-          SonarQube Port 9001: {{ sonarqube_port.failed | ternary('Not Listening', 'Listening') }}
 
-- name: Verify Machine03 - Nexus
-  hosts: machine03
-  become: yes
-  gather_facts: yes
-  
-  tasks:
-    - name: Check Docker is running
-      systemd:
-        name: docker
-      register: docker_status
-    
-    - name: Check Nexus container
+    - name: Get all container info dynamically
       docker_container_info:
-        name: nexus-docker
-      register: nexus_container
-    
-    - name: Check Portainer container
-      docker_container_info:
-        name: portainer
-      register: portainer_container
-    
+        name: "{{ item }}"
+      register: container_info
+      ignore_errors: yes
+      loop: "{{ service_containers[inventory_hostname] | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+
     - name: Check Nginx status
       systemd:
         name: nginx
       register: nginx_status
-    
-    - name: Check if Nexus port is listening
+
+    - name: Check listening ports
       wait_for:
-        port: 8081
+        port: "{{ item }}"
         timeout: 5
-      register: nexus_port
+      register: port_status
       ignore_errors: yes
-    
-    - name: Check if Docker registry port is listening
-      wait_for:
-        port: 8082
-        timeout: 5
-      register: docker_registry_port
-      ignore_errors: yes
-    
-    - name: Check if Helm registry port is listening
-      wait_for:
-        port: 8083
-        timeout: 5
-      register: helm_registry_port
-      ignore_errors: yes
-    
-    - name: Display Nexus status
+      loop: "{{ service_ports[inventory_hostname] | default([]) }}"
+      loop_control:
+        label: "Port {{ item }}"
+
+    - name: Display machine service status
       debug:
         msg: |
+          Machine: {{ inventory_hostname }}
           Docker: {{ docker_status.status.ActiveState }}
-          Nexus Container: {{ nexus_container.exists | ternary('Running', 'Not Found') }}
-          Portainer Container: {{ portainer_container.exists | ternary('Running', 'Not Found') }}
+          Containers:
+          {% for c in container_info.results %}
+            - {{ c.invocation.module_args.name }}: {{ c.exists | ternary('Running', 'Not Found') }}
+          {% endfor %}
           Nginx: {{ nginx_status.status.ActiveState }}
-          Nexus Port 8081: {{ nexus_port.failed | ternary('Not Listening', 'Listening') }}
-          Docker Registry Port 8082: {{ docker_registry_port.failed | ternary('Not Listening', 'Listening') }}
-          Helm Registry Port 8083: {{ helm_registry_port.failed | ternary('Not Listening', 'Listening') }}
+          Ports:
+          {% for p in port_status.results %}
+            - Port {{ p.item }}: {{ p.failed | ternary('Not Listening', 'Listening') }}
+          {% endfor %}
 
 - name: Check SSL Certificates
   hosts: all
   become: yes
   gather_facts: yes
-  
+
   tasks:
     - name: Check if certbot is installed
       command: which certbot
       register: certbot_check
       changed_when: false
       ignore_errors: yes
-    
+
     - name: List SSL certificates
       command: certbot certificates
       register: cert_list
       changed_when: false
       ignore_errors: yes
       when: certbot_check.rc == 0
-    
+
     - name: Display certificate status
       debug:
         var: cert_list.stdout_lines
@@ -207,19 +97,21 @@
 - name: Infrastructure Health Summary
   hosts: localhost
   gather_facts: no
-  
+
+  vars_files:
+    - ../vars/gcp_vars.yml
+
   tasks:
     - name: Display summary
       debug:
         msg: |
           Infrastructure Verification Complete!
-          
           Review the output above for any issues.
           
-          Expected services:
-          - Machine01: Jenkins (8080), Portainer (9000), Nginx, glab, Ansible
-          - Machine02: SonarQube (9001), PostgreSQL, Portainer (9000), Nginx
-          - Machine03: Nexus (8081, 8082, 8083), Portainer (9000), Nginx
+          Expected services (dynamic):
+          {% for machine in machines %}
+          - {{ machine.name }}: Containers -> {{ service_containers[machine.host] | default([]) }}, Ports -> {{ service_ports[machine.host] | default([]) }}
+          {% endfor %}
           
           Next steps:
           1. Check any failed services
