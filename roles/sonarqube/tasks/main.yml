@@ -1,5 +1,14 @@
 ---
 # SonarQube role - Setup SonarQube
+
+# Required for Elasticsearch inside SonarQube to run properly
+- name: Set vm.max_map_count for SonarQube
+  sysctl:
+    name: vm.max_map_count
+    value: '262144'
+    state: present
+    reload: yes
+
 - name: Create SonarQube directories
   file:
     path: "{{ item }}"
@@ -12,6 +21,14 @@
     - /opt/sonarqube/extensions
     - /opt/sonarqube/logs
 
+- name: Create Docker network for SonarQube
+  docker_network:
+    name: app_network
+    state: present
+
+# -------------------------------
+# PostgreSQL container
+# -------------------------------
 - name: Create PostgreSQL container for SonarQube
   docker_container:
     name: sonarqube-db
@@ -27,15 +44,21 @@
     networks:
       - name: app_network
 
-- name: Wait for PostgreSQL to be ready
-  wait_for:
-    timeout: 30
-  delegate_to: localhost
+- name: Wait for PostgreSQL to be ready (using docker exec)
+  shell: "docker exec sonarqube-db pg_isready -U sonar"
+  register: pg_ready
+  retries: 12
+  delay: 10
+  until: pg_ready.rc == 0
+  changed_when: false
 
+# -------------------------------
+# SonarQube container
+# -------------------------------
 - name: Create SonarQube container
   docker_container:
     name: sonarqube
-    image: sonarqube:lts-community
+    image: sonarqube:latest
     state: started
     restart_policy: always
     ports:
@@ -44,6 +67,7 @@
       SONAR_JDBC_URL: "jdbc:postgresql://sonarqube-db:5432/sonarqube"
       SONAR_JDBC_USERNAME: "sonar"
       SONAR_JDBC_PASSWORD: "sonar"
+      SONAR_HOST_URL: "http://localhost:9001"
     volumes:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_extensions:/opt/sonarqube/extensions
@@ -53,53 +77,17 @@
     ulimits:
       - nofile:65536:65536
 
-- name: Wait for SonarQube to start
+- name: Wait for SonarQube HTTP to be ready
   wait_for:
+    host: localhost
     port: 9001
-    delay: 30
+    delay: 10
     timeout: 300
-
-- name: Install Nginx
-  apt:
-    name: nginx
-    state: present
-
-- name: Start and enable Nginx
-  systemd:
-    name: nginx
     state: started
-    enabled: yes
-
-- name: Install Certbot
-  apt:
-    name:
-      - certbot
-      - python3-certbot-nginx
-    state: present
-
-- name: Create Nginx configuration for SonarQube
-  template:
-    src: sonarqube-nginx.conf.j2
-    dest: /etc/nginx/sites-available/sonarqube
-    mode: "0644"
-  notify: restart nginx
-
-- name: Enable SonarQube Nginx site
-  file:
-    src: /etc/nginx/sites-available/sonarqube
-    dest: /etc/nginx/sites-enabled/sonarqube
-    state: link
-  notify: restart nginx
-
-- name: Remove default Nginx site
-  file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  notify: restart nginx
 
 - name: Display SonarQube information
   debug:
     msg: |
-      SonarQube is running at http://{{ ansible_host }}:9001
+      ✅ SonarQube is running at http://{{ ansible_host }}:9001
       Default credentials: admin/admin
       Please change the password on first login!

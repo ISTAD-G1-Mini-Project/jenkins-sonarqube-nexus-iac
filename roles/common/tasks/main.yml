@@ -66,15 +66,6 @@
     limit_item: nofile
     value: '65536'
 
-- name: Set vm.max_map_count for SonarQube/Nexus
-  sysctl:
-    name: vm.max_map_count
-    value: '262144'
-    state: present
-    reload: yes
-  when: inventory_hostname in 
-        (machines | selectattr('name','in',['sonarqube-server','nexus-server']) | map(attribute='host') | list)
-
 - name: Create service user for applications
   user:
     name: appuser

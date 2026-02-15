@@ -172,26 +172,3 @@
           {% endfor %}
         dest: ./vm-info.txt
         mode: '0644'
-
-- name: Configure Infrastructure
-  import_playbook: setup-infrastructure.yml
-
-- name: Complete
-  hosts: localhost
-  gather_facts: no
-  tasks:
-    - name: Final message
-      debug:
-        msg: |
-          ==========================================
-          Infrastructure Setup Complete!
-          ==========================================
-          
-          Your services are being configured and will be available soon.
-          
-          Check vm-info.txt for all IP addresses and SSH commands.
-          
-          Next Steps:
-          1. Configure DNS records (see vm-info.txt)
-          2. Wait for DNS propagation (5-60 minutes)
-          3. Run: ansible-playbook setup-ssl.yml

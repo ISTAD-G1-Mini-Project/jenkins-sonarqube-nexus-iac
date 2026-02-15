@@ -1,4 +1,5 @@
 ---
-- import_playbook: create-and-setup-infrastructure.yml
+- import_playbook: create-gcp-infrastructure.yml
+- import_playbook: setup-infrastructure.yml
 - import_playbook: setup-domain.yml
 - import_playbook: setup-ssl.yml

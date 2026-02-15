@@ -13,37 +13,38 @@
 #       debug:
 #         msg: "Setting up infrastructure across {{ ansible_play_hosts | length }} machines"
 
-- name: Setup Machine01 - Jenkins Server
-  hosts: jenkins_group
+# - name: Setup Machine01 - Jenkins Server
+#   hosts: jenkins_group
+#   become: yes
+#   gather_facts: yes
+#   vars_files:
+#     - ../vars/gcp_vars.yml 
+  
+#   tasks:
+#     - name: Display setup information
+#       debug:
+#         msg: "Setting up Jenkins server on {{ inventory_hostname }}"
+  
+#   roles:
+#     - common
+#     - docker
+#     - ohmyzsh
+#     - portainer
+#     - jenkins
+#     - nginx
+
+- name: Setup Machine02 - SonarQube Server
+  hosts: sonarqube_group
   become: yes
   gather_facts: yes
   vars_files:
-    - ../vars/gcp_vars.yml 
-  
-  tasks:
-    - name: Display setup information
-      debug:
-        msg: "Setting up Jenkins server on {{ inventory_hostname }}"
+      - ../vars/gcp_vars.yml 
   
   roles:
     - common
     - docker
-    - ohmyzsh
-    - portainer
-    - jenkins
+    - sonarqube
     - nginx
-
-# - name: Setup Machine02 - SonarQube Server
-#   hosts: sonarqube
-#   become: yes
-#   gather_facts: yes
-  # vars_files:
-  #     - ../vars/gcp_vars.yml 
-  
-#   roles:
-#     - common
-#     - sonarqube
-#      - nginx
 
 # - name: Setup Machine03 - Nexus Repository
 #   hosts: nexus
