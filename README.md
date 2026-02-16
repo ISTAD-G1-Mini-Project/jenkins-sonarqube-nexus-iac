@@ -28,8 +28,6 @@ brew install ansible      # macOS
 # Install Python modules
 pip3 install requests google-auth
 
-# Install required Ansible collections
-ansible-galaxy collection install -r requirements.yml
 ```
 
 ### 2. GCP Setup
@@ -84,7 +82,40 @@ You need 3 domain names (or subdomains):
 - `sonarqube.yourdomain.com`
 - `nexus.yourdomain.com`
 
-### 5. Local Python Environment
+### 5. Cloudflare Setup (Automatic DNS Records)
+
+To automatically create DNS records for your services, configure **Cloudflare**:
+
+#### 1. Add Your Domain
+- Log in to Cloudflare.
+- Click **Add a Site** and enter your domain.
+- Choose a plan (Free plan is enough).
+- Update your domain nameservers to the ones provided by Cloudflare.
+
+#### 2. Create API Token
+- Go to **Profile → API Tokens → Create Token**.
+- Use **Edit zone DNS** template.
+- Set permissions:
+  - Zone → DNS → Edit
+  - Zone → Zone → Read
+- Select your specific domain (zone).
+- Create the token and save it securely.
+
+#### 3. Install Required Tools
+
+```bash
+pip install cloudflare
+# or for Ansible
+ansible-galaxy collection install community.general
+```
+#### 4. Set Environment Variable
+
+```bash
+CLOUDFLARE_API_TOKEN=your_api_token  # using ansible-vault to store " ansible-vault create secrets.yml "
+CLOUDFLARE_ZONE=yourdomain.com
+```
+
+### 6. Local Python Environment
 
 We recommend using a **Python virtual environment** to isolate dependencies.
 
@@ -96,8 +127,8 @@ python3 -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+# Upgrade pip inside venv
+pip install --upgrade pip
 
 # 3. Install required Python packages
 pip install -r requirements.txt
@@ -144,7 +175,8 @@ gcloud compute zones list --project=YOUR_PROJECT_ID
 
 ```bash
 # This creates VMs + installs everything + add domain names
-ansible-playbook playbooks/deploy-all.yml
+ansible-playbook -i localhost playbooks/deploy-all.yml \
+    --vault-password-file ./secrets/vault_pass.txt
 ```
 
 This single command will:
@@ -165,16 +197,17 @@ This single command will:
 
 ```bash
 # Step 1: Create VMs only
-ansible-playbook playbooks/create-and-setup-infrastructure.yml
+ansible-playbook playbooks/tasks/create-gcp-infrastructure.yml
 
 # Step 2: Configure services
-ansible-playbook playbooks/setup-infrastructure.yml
+ansible-playbook playbooks/tasks/setup-infrastructure.yml
 
 # Step 3: Setup domain/DNS
-ansible-playbook playbooks/setup-domain.yml
+ansible-playbook playbooks/tasks/setup-domain.yml \
+--vault-password-file ./secrets/vault_pass.txt
 
 # Step 4: Setup SSL (after DNS propagation)
-ansible-playbook playbooks/setup-ssl.yml
+ansible-playbook playbooks/tasks/setup-ssl.yml
 ```
 
 ## 🌐 DNS Configuration
@@ -204,7 +237,7 @@ dig jenkins.yourdomain.com
 After DNS propagates:
 
 ```bash
-ansible-playbook playbooks/setup-ssl.yml
+ansible-playbook playbooks/tasks/setup-ssl.yml
 ```
 
 This obtains Let's Encrypt certificates for all domains.
@@ -234,7 +267,7 @@ ssh ansible@NEXUS_IP "docker exec nexus-docker cat /nexus-data/admin.password"
 ### Check Status
 
 ```bash
-ansible-playbook playbooks/verify-infrastructure.yml
+ansible-playbook playbooks/tasks/verify-infrastructure.yml
 ```
 
 ### View Logs
@@ -249,38 +282,12 @@ docker logs sonarqube
 docker logs nexus-docker
 ```
 
-### Restart Services
-
-```bash
-# Restart specific service
-ansible machine01 -i inventory.ini -m shell -a "docker restart jenkins" -b
-
-# Restart all services
-ansible all -i inventory.ini -m shell -a "docker restart \$(docker ps -q)" -b
-```
-
-### Backup
-
-```bash
-# Jenkins
-ssh ansible@JENKINS_IP
-docker run --rm -v jenkins_home:/data -v /tmp:/backup ubuntu tar czf /backup/jenkins-backup.tar.gz /data
-
-# SonarQube database
-ssh ansible@SONARQUBE_IP
-docker exec sonarqube-db pg_dump -U sonar sonarqube > sonarqube-backup.sql
-
-# Nexus
-ssh ansible@NEXUS_IP
-docker run --rm -v nexus_data:/data -v /tmp:/backup ubuntu tar czf /backup/nexus-backup.tar.gz /data
-```
-
 ## 🗑️ Destroy Infrastructure
 
 **⚠️ WARNING: This permanently deletes everything!**
 
 ```bash
-ansible-playbook destroy-gcp-infrastructure.yml
+ansible-playbook playbooks/tasks/destroy-gcp-infrastructure.yml
 ```
 
 This will:
@@ -302,13 +309,17 @@ ansible-gcp-infrastructure/
 ├── vars/
 │   └── gcp_vars.yml                             # GCP configuration
 ├── playbooks/
-│   ├── create-and-setup-infrastructure.yml      # creates VMs + setup
 │   ├── deploy-all.yml                           # Main playbook ( creates VMs + setup + Add domain names)
-│   ├── destroy-gcp-infrastructure.yml           # Destroy all resources
-│   ├── setup-domain.yml                         # set up domain name
-│   ├── setup-infrastructure.yml                 # Configure existing VMs
-│   ├── setup-ssl.yml                            # SSL certificate setup
-│   └── verify-infrastructure.yml                # Health checks
+│   ├── Justfile
+│   └── tasks/                          
+│       ├── create-and-setup-infrastructure.yml      # creates VMs + setup
+│       ├── destroy-gcp-infrastructure.yml           # Destroy all resources
+│       ├── setup-domain.yml                         # set up domain name
+│       ├── setup-infrastructure.yml                 # Configure existing VMs
+│       ├── setup-ssl.yml                            # SSL certificate setup
+│       └── verify-infrastructure.yml                # Health checks
+├── templates/
+│    └── inventory.j2                  # Inventory Template with Jinja2
 └── roles/
     ├── common/                        # Base configuration
     ├── docker/                        # Docker installation
@@ -318,17 +329,6 @@ ansible-gcp-infrastructure/
 ```
 
 ## 🔍 Troubleshooting
-
-### GCP Authentication Issues
-
-```bash
-# Test service account
-gcloud auth activate-service-account --key-file=your-key.json
-gcloud projects list
-
-# Check permissions
-gcloud projects get-iam-policy YOUR_PROJECT_ID
-```
 
 ### VM Creation Fails
 
