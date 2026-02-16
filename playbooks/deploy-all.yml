@@ -1,5 +1,5 @@
 ---
-- import_playbook: create-gcp-infrastructure.yml
-- import_playbook: setup-infrastructure.yml
-- import_playbook: setup-domain.yml
-- import_playbook: setup-ssl.yml
+- import_playbook: ./tasks/create-gcp-infrastructure.yml
+- import_playbook: ./tasks/setup-infrastructure.yml
+- import_playbook: ./tasks/setup-domain.yml
+- import_playbook: ./tasks/setup-ssl.yml

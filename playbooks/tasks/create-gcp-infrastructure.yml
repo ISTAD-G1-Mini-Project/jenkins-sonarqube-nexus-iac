@@ -4,14 +4,14 @@
 
 - name: Create GCP Infrastructure
   hosts: localhost
-  connection: local 
-  become: yes 
+  connection: local
+  become: yes
   gather_facts: yes
   vars_files:
-    - ../vars/gcp_vars.yml
+    - ../../../vars/gcp_vars.yml
   vars:
     ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
-  
+
   tasks:
     - name: Display setup information
       debug:
@@ -85,10 +85,9 @@
           ssh-keys: "{{ ssh_user }}:{{ ssh_key_content.content | b64decode }}"
         tags:
           items:
-            - "{{ item.name.split('-')[0] }}"  # e.g., jenkins, sonarqube, nexus
+            - "{{ item.name.split('-')[0] }}" # e.g., jenkins, sonarqube, nexus
             - http-server
             - https-server
-        labels: "{{ resource_tags }}"
         state: present
       loop: "{{ machines }}"
       loop_control:
@@ -101,12 +100,12 @@
         port: 22
         delay: 10
         timeout: 300
-      loop: "{{ created_machines.results | map(attribute='networkInterfaces') 
-                                  | map('first') 
-                                  | map(attribute='accessConfigs') 
-                                  | map('first') 
-                                  | map(attribute='natIP') 
-                                  | list }}"
+      loop: "{{ created_machines.results | map(attribute='networkInterfaces')
+        | map('first')
+        | map(attribute='accessConfigs')
+        | map('first')
+        | map(attribute='natIP')
+        | list }}"
 
     - name: Create Firewall Rules dynamically per machine type
       google.cloud.gcp_compute_firewall:
@@ -116,7 +115,7 @@
           - ip_protocol: tcp
             ports: "{{ service_ports[item] }}"
         source_ranges:
-          - '0.0.0.0/0'
+          - "0.0.0.0/0"
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
@@ -125,28 +124,11 @@
       loop_control:
         label: "{{ item }}"
 
-
     - name: Create dynamic inventory file
-      copy:
-        content: |
-          [all:vars]
-          ansible_user={{ ssh_user }}
-          ansible_ssh_private_key_file=~/.ssh/id_rsa
-          ansible_python_interpreter=/usr/bin/python3
-          ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-          admin_email={{ admin_email }}
-
-          {% for machine in machines %}
-          {{ machine.host }}_domain={{ machine.domains[0] }}
-          {% endfor %}
-
-          {% for machine, result in machines|zip(created_machines.results) %}
-          [{{ machine.host }}]
-          {{ machine.name }} ansible_host={{ result.networkInterfaces[0].accessConfigs[0].natIP }}
-
-          {% endfor %}
-        dest: inventory.ini
-        mode: '0644'
+      template:
+        src: ../templates/inventory.j2
+        dest: ../inventory.ini
+      when: true
 
     - name: Display VM information
       debug:
@@ -169,6 +151,7 @@
             External IP: {{ result.networkInterfaces[0].accessConfigs[0].natIP }}
             SSH: ssh {{ ssh_user }}@{{ result.networkInterfaces[0].accessConfigs[0].natIP }}
             Domain: {{ machine.domains[0] }}
+
           {% endfor %}
-        dest: ./vm-info.txt
-        mode: '0644'
+        dest: ../vm-info.txt
+        mode: "0644"

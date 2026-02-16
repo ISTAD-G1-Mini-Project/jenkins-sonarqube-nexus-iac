@@ -3,7 +3,7 @@
   become: yes
   gather_facts: yes
   vars_files:
-    - ../vars/gcp_vars.yml
+    - ../../vars/gcp_vars.yml
 
   tasks:
     - name: Obtain SSL certificate via Certbot
@@ -28,21 +28,12 @@
         name: nginx
         state: reloaded
 
-# - name: Test certificate auto-renewal
-#   hosts: jenkins_group,sonarqube_group,nexus_group
-#   become: yes
-#   gather_facts: no
-#   tasks:
-#     - name: Test certbot renewal
-#       command: certbot renew --dry-run
-#       changed_when: false
-
 - name: SSL Setup Complete
   hosts: localhost
   connection: local
   gather_facts: no
   vars_files:
-    - ../vars/gcp_vars.yml
+    - ../../vars/gcp_vars.yml
   tasks:
     - name: Display completion message
       debug:

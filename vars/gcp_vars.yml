@@ -74,11 +74,5 @@ nginx_services:
 ssh_user: "macbookpro"
 ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
 
-# Tags for resource management
-resource_tags:
-  environment: "production"
-  managed_by: "ansible"
-  project: "cicd-infrastructure"
-
 jenkins_admin_user: admin
 jenkins_admin_password: changeme123

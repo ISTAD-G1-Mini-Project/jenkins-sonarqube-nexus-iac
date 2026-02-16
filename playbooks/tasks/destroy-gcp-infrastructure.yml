@@ -119,7 +119,7 @@
 
     - name: Remove VM info file
       file:
-        path: ./vm-info.txt
+        path: ../vm-info.txt
         state: absent
       ignore_errors: yes
 
@@ -155,5 +155,5 @@
           Manual cleanup required:
           - DNS records (if configured)
           - Service account key file (if no longer needed)
-        dest: ./destruction-log.txt
+        dest: ../destruction-log.txt
         mode: '0644'

@@ -4,9 +4,9 @@
   become: true
   connection: local
   vars_files:
-    - ../vars/cloudflare_vars.yml
-    - ../vars/secrets.yml
-    - ../vars/gcp_vars.yml
+    - ../../vars/cloudflare_vars.yml
+    - ../../vars/secrets.yml
+    - ../../vars/gcp_vars.yml
   vars:
     # This assumes you have created_machines from the previous playbook
     machine_ips: "{{ machines | zip(created_machines.results) | map('combine') | list }}"
@@ -16,7 +16,7 @@
     - name: Create DNS records dynamically
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
-        record: "{{ item.domains[0].split('.')[0] }}"  # Use the first part of the domain as record
+        record: "{{ item.domains[0].split('.')[0] }}" # Use the first part of the domain as record
         type: "A"
         value: "{{ item.natIP }}"
         ttl: 120

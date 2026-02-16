@@ -6,7 +6,7 @@
   hosts: all
   become: yes
   gather_facts: yes
-  
+
   tasks:
     - name: Display machine info
       debug:
@@ -21,7 +21,7 @@
   become: yes
   gather_facts: yes
   vars_files:
-    - ../vars/gcp_vars.yml
+    - ../../vars/gcp_vars.yml
 
   tasks:
     - name: Check Docker is running
@@ -90,7 +90,7 @@
     - name: Display certificate status
       debug:
         var: cert_list.stdout_lines
-      when: 
+      when:
         - certbot_check.rc == 0
         - cert_list.rc == 0
 
@@ -99,7 +99,7 @@
   gather_facts: no
 
   vars_files:
-    - ../vars/gcp_vars.yml
+    - ../../vars/gcp_vars.yml
 
   tasks:
     - name: Display summary
@@ -107,12 +107,12 @@
         msg: |
           Infrastructure Verification Complete!
           Review the output above for any issues.
-          
+
           Expected services (dynamic):
           {% for machine in machines %}
           - {{ machine.name }}: Containers -> {{ service_containers[machine.host] | default([]) }}, Ports -> {{ service_ports[machine.host] | default([]) }}
           {% endfor %}
-          
+
           Next steps:
           1. Check any failed services
           2. Review logs: docker logs <container_name>

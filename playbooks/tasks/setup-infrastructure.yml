@@ -2,29 +2,18 @@
 # Main playbook to setup the entire infrastructure
 # Usage: ansible-playbook -i inventory.ini setup-infrastructure.yml
 
-# - name: Setup Infrastructure - All Machines
-#   hosts: jenkins_group,sonarqube_group,nexus_group
-#   # connection: local 
-#   become: yes 
-#   gather_facts: yes
-  
-#   tasks:
-#     - name: Display setup information
-#       debug:
-#         msg: "Setting up infrastructure across {{ ansible_play_hosts | length }} machines"
-
 # - name: Setup Machine01 - Jenkins Server
 #   hosts: jenkins_group
 #   become: yes
 #   gather_facts: yes
 #   vars_files:
-#     - ../vars/gcp_vars.yml 
-  
+#     - ../../vars/gcp_vars.yml
+
 #   tasks:
 #     - name: Display setup information
 #       debug:
 #         msg: "Setting up Jenkins server on {{ inventory_hostname }}"
-  
+
 #   roles:
 #     - common
 #     - docker
@@ -38,8 +27,8 @@
   become: yes
   gather_facts: yes
   vars_files:
-      - ../vars/gcp_vars.yml 
-  
+    - ../../vars/gcp_vars.yml
+
   roles:
     - common
     - docker
@@ -50,9 +39,9 @@
 #   hosts: nexus
 #   become: yes
 #   gather_facts: yes
-  # vars_files:
-  #     - ../vars/gcp_vars.yml 
-  
+# vars_files:
+#     - ../../vars/gcp_vars.yml
+
 #   roles:
 #     - common
 #     - docker
@@ -68,17 +57,17 @@
   hosts: localhost
   gather_facts: no
   vars_files:
-    - ../vars/gcp_vars.yml 
-  
+    - ../../vars/gcp_vars.yml
+
   tasks:
     - name: Display completion message
       debug:
         msg: |
           Infrastructure setup complete!
-          
+
           Access your services at:
           - Jenkins: https://{{ machines[0].domains[0] }}
           - SonarQube: https://{{ machines[1].domains[0] }}
           - Nexus: https://{{ machines[2].domains[0] }}
-          
+
           Note: Configure your DNS and SSL certificates accordingly.
