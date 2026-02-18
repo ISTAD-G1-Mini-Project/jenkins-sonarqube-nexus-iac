@@ -17,7 +17,7 @@ setup-infra:
     ansible-playbook -i localhost playbooks/tasks/setup-infrastructure.yml
 
 verify-infra:
-    ansible-playbook -i localhost playbooks/tasks/verify-infrastructure.yml
+    ansible-playbook -i inventory.ini playbooks/tasks/verify-infrastructure.yml
 
 setup-domain:
     ansible-playbook -i localhost playbooks/tasks/setup-domain.yml \
