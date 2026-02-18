@@ -8,7 +8,7 @@
   become: yes
   gather_facts: yes
   vars_files:
-    - ../../../vars/gcp_vars.yml
+    - ../../vars/gcp_vars.yml
   vars:
     ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
 
@@ -126,8 +126,8 @@
 
     - name: Create dynamic inventory file
       template:
-        src: ../templates/inventory.j2
-        dest: ../inventory.ini
+        src: ../../templates/inventory.j2
+        dest: ../../inventory.ini
       when: true
 
     - name: Display VM information

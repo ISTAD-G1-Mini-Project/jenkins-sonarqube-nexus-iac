@@ -56,49 +56,21 @@
   when:
     - admin_password_check.stdout == "exists"
     - nexus_password.stdout is defined
-
-- name: Install Nginx
-  apt:
-    name: nginx
-    state: present
-
-- name: Start and enable Nginx
-  systemd:
-    name: nginx
-    state: started
-    enabled: yes
-
-- name: Install Certbot
-  apt:
-    name:
-      - certbot
-      - python3-certbot-nginx
-    state: present
-
-- name: Create Nginx configuration for Nexus
-  template:
-    src: nexus-nginx.conf.j2
-    dest: /etc/nginx/sites-available/nexus
-    mode: "0644"
-  notify: restart nginx
-
-- name: Enable Nexus Nginx site
-  file:
-    src: /etc/nginx/sites-available/nexus
-    dest: /etc/nginx/sites-enabled/nexus
-    state: link
-  notify: restart nginx
-
-- name: Remove default Nginx site
-  file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  notify: restart nginx
+  
+- name: Get domain for current machine
+  set_fact:
+    current_domain: >-
+      {{
+        (machines
+        | selectattr('host', 'equalto', group_names[0])
+        | map(attribute='domains')
+        | first)[0]
+      }}
 
 - name: Display Nexus information
   debug:
     msg: |
-      Nexus Repository Manager is running at http://{{ ansible_host }}:8081
+      Nexus Repository Manager is running at http://{{ current_domain }}
 
       Default username: admin
       {% if admin_password_check.stdout == "exists" and nexus_password.stdout is defined %}
@@ -111,8 +83,6 @@
       1. Login with admin credentials
       2. Complete the setup wizard
       3. Create Docker Blob Store repository (uses docker-blob)
-      4. Create Helm Blob Store repository (uses helm-blob)
-      5. Configure connectors on ports 8082 (Docker) and 8083 (Helm)
+      4. Configure connectors on ports 8082 (Docker)
 
-      Docker Repository will be accessible at: {{ nexus_domain }}:8082
-      Helm Repository will be accessible at: {{ nexus_domain }}:8083
+      Docker Repository will be accessible at: {{ current_domain }}:8082

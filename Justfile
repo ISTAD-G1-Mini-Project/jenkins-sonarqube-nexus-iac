@@ -1,10 +1,10 @@
 ping-all: 
     echo "Ping all instances inside inventory.ini " 
-    ansible -i inventory.ini \
+    ansible -i playbooks/inventory.ini \
         all -m ping 
         
 setup-all:
-    ansible-playbook -i localhost playbooks/deploy-all.yml \
+    ansible-playbook -i inventory.ini playbooks/deploy-all.yml \
     --vault-password-file ./secrets/vault_pass.txt
 
 create-machine:
@@ -22,9 +22,6 @@ verify-infra:
 setup-domain:
     ansible-playbook -i localhost playbooks/tasks/setup-domain.yml \
     --vault-password-file ./secrets/vault_pass.txt
-
-setup-infra:
-    ansible-playbook -i localhost playbooks/tasks/setup-infrastructure.yml
 
 setup-ssl:
     ansible-playbook -i localhost playbooks/tasks/setup-ssl.yml

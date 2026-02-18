@@ -22,8 +22,21 @@
 #     - jenkins
 #     - nginx
 
-- name: Setup Machine02 - SonarQube Server
-  hosts: sonarqube_group
+# - name: Setup Machine02 - SonarQube Server
+#   hosts: sonarqube_group
+#   become: yes
+#   gather_facts: yes
+#   vars_files:
+#     - ../../vars/gcp_vars.yml
+
+#   roles:
+#     - common
+#     - docker
+#     - sonarqube
+#     - nginx
+
+- name: Setup Machine03 - Nexus Repository
+  hosts: nexus_group
   become: yes
   gather_facts: yes
   vars_files:
@@ -32,23 +45,10 @@
   roles:
     - common
     - docker
-    - sonarqube
+    - ohmyzsh
+    - portainer
+    - nexus
     - nginx
-
-# - name: Setup Machine03 - Nexus Repository
-#   hosts: nexus
-#   become: yes
-#   gather_facts: yes
-# vars_files:
-#     - ../../vars/gcp_vars.yml
-
-#   roles:
-#     - common
-#     - docker
-#     - ohmyzsh
-#     - portainer
-#     - nexus
-#     - nginx
 
 # ========================
 # Infrastructure Setup Complete
