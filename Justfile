@@ -7,10 +7,10 @@ setup-all:
     ansible-playbook -i inventory.ini playbooks/deploy-all.yml \
     --vault-password-file ./secrets/vault_pass.txt
 
-create-machine:
+create-machines:
     ansible-playbook -i localhost playbooks/tasks/create-gcp-infrastructure.yml
     
-destroy-machine:
+destroy-machines:
     ansible-playbook -i localhost playbooks/tasks/destroy-gcp-infrastructure.yml
 
 setup-infra:

@@ -50,15 +50,6 @@ service_containers:
     - nexus-docker
     - portainer
 
-service_ports:
-  jenkins_group:
-    - 8080
-  sonarqube_group:
-    - 9001
-  nexus_group:
-    - 8081
-    - 8082
-    - 8083
 nginx_services:
   - name: jenkins
     domain: jenkins.vuthytourn.shop

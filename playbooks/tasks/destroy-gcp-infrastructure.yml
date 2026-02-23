@@ -37,7 +37,6 @@
   gather_facts: no
   ignore_errors: yes
   ignore_unreachable: yes
-
   tasks:
     - name: Stop all Docker containers
       shell: docker stop $(docker ps -aq)
@@ -59,7 +58,9 @@
   hosts: localhost
   gather_facts: no
   vars_files:
-    - gcp_vars.yml
+    - ../../vars/gcp_vars.yml
+  vars:
+    ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
 
   tasks:
     - name: Delete all VMs

@@ -45,13 +45,13 @@
 
     - name: Check listening ports
       wait_for:
-        port: "{{ item }}"
+        port: "{{ item.http_port }}"
         timeout: 5
       register: port_status
       ignore_errors: yes
-      loop: "{{ service_ports[inventory_hostname] | default([]) }}"
+      loop: "{{ nginx_services }}"
       loop_control:
-        label: "Port {{ item }}"
+        label: "{{ item.name }} (Port {{ item.http_port }})"
 
     - name: Display machine service status
       debug:

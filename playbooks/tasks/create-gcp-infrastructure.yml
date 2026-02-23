@@ -1,35 +1,34 @@
 ---
-# Main Playbook: Create GCP VMs and Setup Complete Infrastructure
-# Usage: ansible-playbook -i localhost, create-and-setup-infrastructure.yml
+# Secure & Reusable GCP Infrastructure Setup
+# Usage:
+# ansible-playbook -i localhost, create-and-setup-infrastructure.yml
 
-- name: Create GCP Infrastructure
+- name: Create Secure GCP Infrastructure
   hosts: localhost
   connection: local
-  become: yes
-  gather_facts: yes
+  gather_facts: no
+
   vars_files:
     - ../../vars/gcp_vars.yml
+
   vars:
     ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
 
   tasks:
-    - name: Display setup information
-      debug:
-        msg: |
-          Creating GCP Infrastructure:
-          - Project: {{ gcp_project_id }}
-          - Region: {{ gcp_region }}
-          - Zone: {{ gcp_zone }}
-          - Machines:
-          {% for machine in machines %}
-            - {{ machine.name }} ({{ machine.domains[0] }})
-          {% endfor %}
+
+  # ==================================================
+  # VALIDATION
+  # ==================================================
 
     - name: Ensure GCP service account file exists
       stat:
         path: "{{ gcp_service_account_file }}"
       register: sa_file
       failed_when: not sa_file.stat.exists
+
+  # ==================================================
+  # NETWORK
+  # ==================================================
 
     - name: Create VPC Network
       google.cloud.gcp_compute_network:
@@ -53,12 +52,51 @@
         state: present
       register: subnet
 
+  # ==================================================
+  # FIREWALL
+  # ==================================================
+
+    - name: Allow SSH (key-based only, no password)
+      google.cloud.gcp_compute_firewall:
+        name: "{{ network_name }}-allow-ssh"
+        network: "{{ network }}"
+        allowed:
+          - ip_protocol: tcp
+            ports: ["22"]
+        source_ranges:
+          - "0.0.0.0/0"
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: present
+
+    - name: Allow HTTP and HTTPS traffic
+      google.cloud.gcp_compute_firewall:
+        name: "{{ network_name }}-allow-web"
+        network: "{{ network }}"
+        allowed:
+          - ip_protocol: tcp
+            ports: ["80", "443"]
+        target_tags:
+          - http-server
+          - https-server
+        source_ranges:
+          - "0.0.0.0/0"
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: present
+
+  # ==================================================
+  # CREATE VMS
+  # ==================================================
+
     - name: Read SSH public key
       slurp:
         src: "{{ ssh_public_key_file }}"
       register: ssh_key_content
 
-    - name: Create all machines dynamically
+    - name: Create machines
       google.cloud.gcp_compute_instance:
         name: "{{ item.name }}"
         machine_type: "{{ machine_type }}"
@@ -66,6 +104,7 @@
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
+
         disks:
           - auto_delete: true
             boot: true
@@ -73,85 +112,62 @@
               disk_size_gb: "{{ boot_disk_size }}"
               disk_type: "{{ boot_disk_type }}"
               source_image: "projects/{{ image_project }}/global/images/family/{{ image_family }}"
+
         network_interfaces:
           - network: "{{ network }}"
             subnetwork: "{{ subnet }}"
             access_configs:
               - name: External NAT
                 type: ONE_TO_ONE_NAT
-                # Use existing IP if available
-                # natIP: "{{ existing_ips[item.name] | default(omit) }}"
+
         metadata:
           ssh-keys: "{{ ssh_user }}:{{ ssh_key_content.content | b64decode }}"
+          block-project-ssh-keys: "true"
+
         tags:
           items:
-            - "{{ item.name.split('-')[0] }}" # e.g., jenkins, sonarqube, nexus
             - http-server
             - https-server
+
         state: present
+
       loop: "{{ machines }}"
       loop_control:
         label: "{{ item.name }}"
       register: created_machines
 
-    - name: Wait for SSH on all machines
+  # ==================================================
+  # WAIT FOR SSH
+  # ==================================================
+
+    - name: Wait for SSH
       wait_for:
         host: "{{ item }}"
         port: 22
         delay: 10
         timeout: 300
-      loop: "{{ created_machines.results | map(attribute='networkInterfaces')
+      loop: "{{ created_machines.results
+        | map(attribute='networkInterfaces')
         | map('first')
         | map(attribute='accessConfigs')
         | map('first')
         | map(attribute='natIP')
         | list }}"
 
-    - name: Create Firewall Rules dynamically per machine type
-      google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-{{ item | replace('_','-') }}"
-        network: "{{ network }}"
-        allowed:
-          - ip_protocol: tcp
-            ports: "{{ service_ports[item] }}"
-        source_ranges:
-          - "0.0.0.0/0"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: present
-      loop: "{{ machines | map(attribute='host') | unique }}"
-      loop_control:
-        label: "{{ item }}"
+  # ==================================================
+  # OUTPUT INFO
+  # ==================================================
 
-    - name: Create dynamic inventory file
-      template:
-        src: ../../templates/inventory.j2
-        dest: ../../inventory.ini
-      when: true
-
-    - name: Display VM information
+    - name: Display VM info
       debug:
         msg: |
-          VMs Created Successfully!
-          {% for machine, result in machines|zip(created_machines.results) %}
-          {{ machine.name }}:
-            - Internal IP: {{ result.networkInterfaces[0].networkIP }}
-            - External IP: {{ result.networkInterfaces[0].accessConfigs[0].natIP }}
-            - Domain: {{ machine.domains[0] }}
-          {% endfor %}
+          Infrastructure Created Successfully!
 
-    - name: Save VM information to file
-      copy:
-        content: |
-          GCP Infrastructure Created: {{ ansible_date_time.iso8601 }}
           {% for machine, result in machines|zip(created_machines.results) %}
-          {{ machine.name }}:
+          {{ machine.name }}
             Internal IP: {{ result.networkInterfaces[0].networkIP }}
             External IP: {{ result.networkInterfaces[0].accessConfigs[0].natIP }}
             SSH: ssh {{ ssh_user }}@{{ result.networkInterfaces[0].accessConfigs[0].natIP }}
             Domain: {{ machine.domains[0] }}
 
           {% endfor %}
-        dest: ../vm-info.txt
-        mode: "0644"
