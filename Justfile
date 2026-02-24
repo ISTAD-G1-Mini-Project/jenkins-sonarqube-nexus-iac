@@ -1,6 +1,6 @@
 ping-all: 
     echo "Ping all instances inside inventory.ini " 
-    ansible -i playbooks/inventory.ini \
+    ansible -i inventory.ini \
         all -m ping 
         
 setup-all:
@@ -16,8 +16,8 @@ destroy-machines:
 setup-infra:
     ansible-playbook -i localhost playbooks/tasks/setup-infrastructure.yml
 
-verify-infra:
-    ansible-playbook -i inventory.ini playbooks/tasks/verify-infrastructure.yml
+verify-tools:
+    ansible-playbook -i inventory.ini playbooks/tasks/verify-tools.yml
 
 setup-domain:
     ansible-playbook -i localhost playbooks/tasks/setup-domain.yml \

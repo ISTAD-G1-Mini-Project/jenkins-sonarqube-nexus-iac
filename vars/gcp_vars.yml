@@ -36,7 +36,8 @@ machines:
   - name: nexus-server
     host: nexus_group
     domains:
-      - nexus.vuthytourn.shop
+      - nexus.vuthytourn.shop        # Nexus UI + Helm repository
+      - registry.vuthytourn.shop     # Docker container registry
 
 service_containers:
   jenkins_group:
@@ -47,7 +48,7 @@ service_containers:
     - sonarqube-db
     - portainer
   nexus_group:
-    - nexus-docker
+    - nexus
     - portainer
 
 nginx_services:
@@ -60,6 +61,9 @@ nginx_services:
   - name: nexus
     domain: nexus.vuthytourn.shop
     http_port: 8081
+  - name: nexus-registry
+    domain: registry.vuthytourn.shop
+    http_port: 8082  # Docker hosted repository
 
 # SSH Configuration
 ssh_user: "macbookpro"
@@ -67,3 +71,5 @@ ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
 
 jenkins_admin_user: admin
 jenkins_admin_password: changeme123
+
+nexus_configured_admin_password: "changeme123"  # Update after first login — store in vault in production

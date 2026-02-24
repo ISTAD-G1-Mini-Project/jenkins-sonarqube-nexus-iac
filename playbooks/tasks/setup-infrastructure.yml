@@ -2,38 +2,39 @@
 # Main playbook to setup the entire infrastructure
 # Usage: ansible-playbook -i inventory.ini setup-infrastructure.yml
 
-# - name: Setup Machine01 - Jenkins Server
-#   hosts: jenkins_group
-#   become: yes
-#   gather_facts: yes
-#   vars_files:
-#     - ../../vars/gcp_vars.yml
+- name: Setup Machine01 - Jenkins Server
+  hosts: jenkins_group
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../../vars/gcp_vars.yml
 
-#   tasks:
-#     - name: Display setup information
-#       debug:
-#         msg: "Setting up Jenkins server on {{ inventory_hostname }}"
+  tasks:
+    - name: Display setup information
+      debug:
+        msg: "Setting up Jenkins server on {{ inventory_hostname }}"
 
-#   roles:
-#     - common
-#     - docker
-#     - ohmyzsh
-#     - portainer
-#     - jenkins
-#     - nginx
+  roles:
+    - common
+    - docker
+    - ohmyzsh
+    - portainer
+    - jenkins
+    - nginx
 
-# - name: Setup Machine02 - SonarQube Server
-#   hosts: sonarqube_group
-#   become: yes
-#   gather_facts: yes
-#   vars_files:
-#     - ../../vars/gcp_vars.yml
+- name: Setup Machine02 - SonarQube Server
+  hosts: sonarqube_group
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - ../../vars/gcp_vars.yml
 
-#   roles:
-#     - common
-#     - docker
-#     - sonarqube
-#     - nginx
+  roles:
+    - common
+    - docker
+    - sonarqube
+    - portainer
+    - nginx
 
 - name: Setup Machine03 - Nexus Repository
   hosts: nexus_group
