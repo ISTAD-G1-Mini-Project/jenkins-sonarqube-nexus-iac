@@ -11,6 +11,7 @@
       - runc
     state: absent
 
+# used by apt to trust packages from Docker’s repository
 - name: Add Docker GPG key
   apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
@@ -62,7 +63,6 @@
     state: present
   loop:
     - app_network
-    - monitoring_network
 
 - name: Test Docker installation
   command: docker run --rm hello-world

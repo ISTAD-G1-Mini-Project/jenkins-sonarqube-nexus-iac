@@ -56,7 +56,7 @@
   # FIREWALL
   # ==================================================
 
-    - name: Allow SSH (key-based only, no password)
+    - name: Allow SSH
       google.cloud.gcp_compute_firewall:
         name: "{{ network_name }}-allow-ssh"
         network: "{{ network }}"
@@ -115,7 +115,12 @@
 
         network_interfaces:
           - network:
-            selfLink: "projects/{{google_project_id}}/global/networks/default"
+              name: "{{ network_name }}"
+            subnetwork:
+              name: "{{ subnet_name }}"
+          # can be use with default network 
+          # - network:
+          #   selfLink: "projects/{{google_project_id}}/global/networks/default"
             access_configs:
               - name: External NAT
                 type: ONE_TO_ONE_NAT
