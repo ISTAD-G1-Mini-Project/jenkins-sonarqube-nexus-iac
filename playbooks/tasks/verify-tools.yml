@@ -17,6 +17,7 @@
       shell: command -v glab
       register: glab_check
       ignore_errors: yes
+      when: inventory_hostname in groups['jenkins_group']
 
     - name: Check docker
       shell: command -v docker
@@ -32,6 +33,7 @@
       shell: command -v ansible
       register: ansible_check
       ignore_errors: yes
+      when: inventory_hostname in groups['jenkins_group']
 
     - name: Check nginx
       shell: command -v nginx
@@ -57,28 +59,31 @@
       shell: docker ps -a | grep -i jenkins
       register: jenkins_check
       ignore_errors: yes
+      when: inventory_hostname in groups['jenkins_group']
 
     - name: Check SonarQube container
       shell: docker ps -a | grep -i sonarqube
       register: sonar_check
       ignore_errors: yes
+      when: inventory_hostname in groups['sonarqube_group']
 
     - name: Check Nexus container
       shell: docker ps -a | grep -i nexus
       register: nexus_check
       ignore_errors: yes
+      when: inventory_hostname in groups['nexus_group']
 
     - name: Display Summary
       debug:
         msg:
-          - "glab: {{ 'OK' if glab_check.rc == 0 else 'MISSING' }}"
-          - "docker: {{ 'OK' if docker_check.rc == 0 else 'MISSING' }}"
-          - "docker compose: {{ 'OK' if compose_check.rc == 0 else 'MISSING' }}"
-          - "ansible: {{ 'OK' if ansible_check.rc == 0 else 'MISSING' }}"
-          - "nginx: {{ 'OK' if nginx_check.rc == 0 else 'MISSING' }}"
-          - "certbot: {{ 'OK' if certbot_check.rc == 0 else 'MISSING' }}"
-          - "ohmyzsh: {{ 'OK' if ohmyzsh_check.stat.exists else 'MISSING' }}"
-          - "portainer: {{ 'OK' if portainer_check.rc == 0 else 'NOT FOUND' }}"
-          - "jenkins: {{ 'OK' if jenkins_check.rc == 0 else 'NOT FOUND' }}"
-          - "sonarqube: {{ 'OK' if sonar_check.rc == 0 else 'NOT FOUND' }}"
-          - "nexus: {{ 'OK' if nexus_check.rc == 0 else 'NOT FOUND' }}"
+          - "glab:           {{ 'N/A' if glab_check.rc is not defined else ('OK' if glab_check.rc == 0 else 'MISSING') }}"
+          - "docker:         {{ 'OK' if docker_check.rc | default(1) == 0 else 'MISSING' }}"
+          - "docker compose: {{ 'OK' if compose_check.rc | default(1) == 0 else 'MISSING' }}"
+          - "ansible:        {{ 'N/A' if ansible_check.rc is not defined else ('OK' if ansible_check.rc == 0 else 'MISSING') }}"
+          - "nginx:          {{ 'OK' if nginx_check.rc | default(1) == 0 else 'MISSING' }}"
+          - "certbot:        {{ 'OK' if certbot_check.rc | default(1) == 0 else 'MISSING' }}"
+          - "ohmyzsh:        {{ 'OK' if ohmyzsh_check.stat.exists else 'MISSING' }}"
+          - "portainer:      {{ 'OK' if portainer_check.rc | default(1) == 0 else 'NOT FOUND' }}"
+          - "jenkins:        {{ 'N/A' if jenkins_check.rc is not defined else ('OK' if jenkins_check.rc == 0 else 'NOT FOUND') }}"
+          - "sonarqube:      {{ 'N/A' if sonar_check.rc is not defined else ('OK' if sonar_check.rc == 0 else 'NOT FOUND') }}"
+          - "nexus:          {{ 'N/A' if nexus_check.rc is not defined else ('OK' if nexus_check.rc == 0 else 'NOT FOUND') }}"

@@ -4,14 +4,14 @@ ping-all:
         all -m ping 
         
 setup-all:
-    ansible-playbook -i inventory.ini playbooks/deploy-all.yml \
+    ansible-playbook -i localhost, playbooks/deploy-all.yml \
     --vault-password-file ./secrets/vault_pass.txt
 
 create-machines:
     ansible-playbook -i localhost playbooks/tasks/create-gcp-infrastructure.yml
     
 destroy-machines:
-    ansible-playbook -i localhost playbooks/tasks/destroy-gcp-infrastructure.yml
+    ansible-playbook -i inventory.ini playbooks/tasks/destroy-gcp-infrastructure.yml
 
 setup-infra:
     ansible-playbook -i localhost playbooks/tasks/setup-infrastructure.yml

@@ -5,7 +5,7 @@
 
 - name: Destroy Infrastructure Services (if VMs exist)
   hosts: all
-  become: yes
+  become: no
   gather_facts: no
   ignore_errors: yes
   ignore_unreachable: yes
@@ -22,13 +22,10 @@
       shell: docker volume rm $(docker volume ls -q)
       ignore_errors: yes
 
-    - name: Remove all Docker networks
-      shell: docker network rm $(docker network ls -q)
-      ignore_errors: yes
-
 - name: Destroy GCP Resources dynamically
   hosts: localhost
   gather_facts: no
+  become: no
   vars_files:
     - ../../vars/gcp_vars.yml
   vars:
@@ -70,6 +67,7 @@
         name: "{{ subnet_name }}"
         region: "{{ gcp_region }}"
         project: "{{ gcp_project_id }}"
+        ip_cidr_range: "{{ subnet_cidr }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: absent
@@ -108,7 +106,7 @@
     - name: Save destruction log
       copy:
         content: |
-          GCP Infrastructure Destroyed: {{ ansible_date_time.iso8601 }}
+          GCP Infrastructure Destroyed: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
           
           Deleted Machines:
           {% for machine, result in machines|zip(deleted_machines.results) %}

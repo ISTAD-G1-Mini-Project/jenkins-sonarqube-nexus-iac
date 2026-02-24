@@ -1,3 +1,4 @@
+---
 - name: Setup SSL Certificates on all servers
   hosts: jenkins_group,sonarqube_group,nexus_group
   become: yes
@@ -6,6 +7,30 @@
     - ../../vars/gcp_vars.yml
 
   tasks:
+    - name: Ensure Nginx is started before Certbot
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Check DNS resolution for each domain
+      command: "dig +short {{ item.1 }}"
+      loop: "{{ machines | subelements('domains') }}"
+      when: inventory_hostname in groups[item.0.host]
+      register: dns_check
+      changed_when: false
+      failed_when: false
+
+    - name: Fail if any domain has no DNS record
+      fail:
+        msg: >
+          DNS record for {{ item.item.1 }} is not resolving.
+          Add an A record pointing to this server's external IP before running Certbot.
+      loop: "{{ dns_check.results }}"
+      when:
+        - item.skipped is not defined
+        - item.stdout == ""
+
     - name: Obtain SSL certificate via Certbot
       command: >
         certbot --nginx
@@ -17,11 +42,14 @@
       loop: "{{ machines }}"
       when: inventory_hostname in groups[item.host]
       register: certbot_result
-      changed_when: "certbot_result.stdout is defined and 'Successfully received certificate' in certbot_result.stdout"
+      changed_when: >
+        certbot_result.stdout is defined and
+        'Successfully received certificate' in certbot_result.stdout
       failed_when:
         - certbot_result.rc is defined
         - certbot_result.rc != 0
-        - "'Certificate not yet due for renewal' not in certbot_result.stdout"
+        - certbot_result.stdout is not defined or
+          'Certificate not yet due for renewal' not in certbot_result.stdout
 
     - name: Reload Nginx
       systemd:
@@ -39,7 +67,7 @@
       debug:
         msg: |
           SSL certificates have been successfully configured!
-          - Jenkins: https://{{ machines[0].domains[0] }}
+          - Jenkins:   https://{{ machines[0].domains[0] }}
           - SonarQube: https://{{ machines[1].domains[0] }}
-          - Nexus: https://{{ machines[2].domains[0] }}
+          - Nexus:     https://{{ machines[2].domains[0] }}
           Certificates will automatically renew before expiration.

@@ -1,7 +1,7 @@
 - name: Create DNS records in Cloudflare
   hosts: localhost
   gather_facts: no
-  become: true
+  become: no
   connection: local
   vars_files:
     - ../../vars/cloudflare_vars.yml
@@ -9,21 +9,38 @@
     - ../../vars/gcp_vars.yml
 
   tasks:
-    - name: Create DNS records dynamically
+    - name: Get current external IPs from GCP
+      google.cloud.gcp_compute_instance_info:
+        zone: "{{ gcp_zone }}"
+        filters:
+          - "name = {{ item.name }}"
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_service_account_file }}"
+      loop: "{{ machines }}"
+      register: gcp_instance_info
+
+    - name: Build machine to IP mapping
+      set_fact:
+        machine_ip_map: >-
+          {{
+            machine_ip_map | default({}) | combine({
+              item.item.name: item.resources[0].networkInterfaces[0].accessConfigs[0].natIP
+            })
+          }}
+      loop: "{{ gcp_instance_info.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Create DNS A records for ALL domains
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
-        record: "{{ item.domains[0].split('.')[0] }}" # Use the first part of the domain as record
+        record: "{{ item.1.split('.' + cloudflare_zone)[0] }}"
         type: "A"
-        value: "{{ item.natIP }}"
+        value: "{{ machine_ip_map[item.0.name] }}"
         ttl: 120
         proxied: false
         api_token: "{{ cloudflare_api_token }}"
-      loop: >
-        {%- set result_list = [] -%}
-        {%- for machine, gcp_result in machines|zip(created_machines.results) -%}
-        {%- set _ = machine.update({'natIP': gcp_result.networkInterfaces[0].accessConfigs[0].natIP}) -%}
-        {%- set _ = result_list.append(machine) -%}
-        {%- endfor -%}
-        {{ result_list }}
+      loop: "{{ machines | subelements('domains') }}"
       loop_control:
-        label: "{{ item.name }}"
+        label: "{{ item.1 }}"
