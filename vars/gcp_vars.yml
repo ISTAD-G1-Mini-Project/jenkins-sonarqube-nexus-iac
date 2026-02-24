@@ -65,6 +65,12 @@ nginx_services:
     domain: registry.vuthytourn.shop
     http_port: 8082  # Docker hosted repository
 
+# Firewall
+firewall_rules:
+    - "{{ network_name }}-allow-ssh"
+    - "{{ network_name }}-allow-http"
+    - "{{ network_name }}-allow-https"
+
 # SSH Configuration
 ssh_user: "macbookpro"
 ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"

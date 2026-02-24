@@ -21,52 +21,52 @@
     - jenkins
     - nginx
 
-- name: Setup Machine02 - SonarQube Server
-  hosts: sonarqube_group
-  gather_facts: yes
-  vars_files:
-    - ../../vars/gcp_vars.yml
+# - name: Setup Machine02 - SonarQube Server
+#   hosts: sonarqube_group
+#   gather_facts: yes
+#   vars_files:
+#     - ../../vars/gcp_vars.yml
 
-  roles:
-    - common
-    - docker
-    - sonarqube
-    - ohmyzsh
-    - portainer
-    - nginx
+#   roles:
+#     - common
+#     - docker
+#     - sonarqube
+#     - ohmyzsh
+#     - portainer
+#     - nginx
 
-- name: Setup Machine03 - Nexus Repository
-  hosts: nexus_group
-  gather_facts: yes
-  vars_files:
-    - ../../vars/gcp_vars.yml
+# - name: Setup Machine03 - Nexus Repository
+#   hosts: nexus_group
+#   gather_facts: yes
+#   vars_files:
+#     - ../../vars/gcp_vars.yml
 
-  roles:
-    - common
-    - docker
-    - ohmyzsh
-    - portainer
-    - nexus
-    - nginx
+#   roles:
+#     - common
+#     - docker
+#     - ohmyzsh
+#     - portainer
+#     - nexus
+#     - nginx
 
 # ========================
 # Infrastructure Setup Complete
 # ========================
-- name: Infrastructure Setup Complete
-  hosts: localhost
-  gather_facts: no
-  vars_files:
-    - ../../vars/gcp_vars.yml
+# - name: Infrastructure Setup Complete
+#   hosts: localhost
+#   gather_facts: no
+#   vars_files:
+#     - ../../vars/gcp_vars.yml
 
-  tasks:
-    - name: Display completion message
-      debug:
-        msg: |
-          Infrastructure setup complete!
+#   tasks:
+#     - name: Display completion message
+#       debug:
+#         msg: |
+#           Infrastructure setup complete!
 
-          Access your services at:
-          - Jenkins: https://{{ machines[0].domains[0] }}
-          - SonarQube: https://{{ machines[1].domains[0] }}
-          - Nexus: https://{{ machines[2].domains[0] }}
+#           Access your services at:
+#           - Jenkins: https://{{ machines[0].domains[0] }}
+#           - SonarQube: https://{{ machines[1].domains[0] }}
+#           - Nexus: https://{{ machines[2].domains[0] }}
 
-          Note: Configure your DNS and SSL certificates accordingly.
+#           Note: Configure your DNS and SSL certificates accordingly.

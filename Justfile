@@ -14,7 +14,7 @@ destroy-machines:
     ansible-playbook -i inventory.ini playbooks/tasks/destroy-gcp-infrastructure.yml
 
 setup-infra:
-    ansible-playbook -i localhost playbooks/tasks/setup-infrastructure.yml
+    ansible-playbook -i inventory.ini playbooks/tasks/setup-infrastructure.yml
 
 verify-tools:
     ansible-playbook -i inventory.ini playbooks/tasks/verify-tools.yml

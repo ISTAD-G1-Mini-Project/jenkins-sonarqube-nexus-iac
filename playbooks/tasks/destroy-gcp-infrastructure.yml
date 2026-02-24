@@ -50,16 +50,14 @@
       pause:
         seconds: 30
 
-    - name: Delete Firewall Rules dynamically
+    - name: Delete Firewall Rules
       google.cloud.gcp_compute_firewall:
-        name: "{{ network_name }}-allow-{{ item }}"
+        name: "{{ item }}"
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: absent
-      loop: "{{ machines | map(attribute='name') | map('split','-') | map('first') | list | unique }}"
-      loop_control:
-        label: "{{ item }}"
+      loop: "{{ firewall_rules }}"
       ignore_errors: yes
 
     - name: Delete Subnet

@@ -65,3 +65,13 @@
       - ansible
       - ansible-lint
     state: present
+
+- name: Get Jenkins initial admin password
+  command: docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+  register: jenkins_password
+  changed_when: false
+  ignore_errors: yes
+
+- name: Display Jenkins admin password
+  debug:
+    msg: "Jenkins Admin Password: {{ jenkins_password.stdout }}"
