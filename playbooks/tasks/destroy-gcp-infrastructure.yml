@@ -3,34 +3,6 @@
 # Deletes all VMs, firewall rules, subnet, and network
 # Usage: ansible-playbook destroy-gcp-infrastructure.yml
 
-- name: Confirm Destruction
-  hosts: localhost
-  gather_facts: no
-
-  tasks:
-    - name: Warning message
-      debug:
-        msg: |
-          ⚠⚠⚠ CRITICAL WARNING ⚠⚠⚠
-          
-          This will PERMANENTLY DELETE:
-          - All GCP VM instances defined in machines
-          - All data and configurations
-          - Network and firewall rules
-          - Everything cannot be recovered!
-          
-          Type 'DESTROY' to confirm destruction.
-
-    - name: Prompt for confirmation
-      pause:
-        prompt: "Type 'DESTROY' to confirm (or Ctrl+C to cancel)"
-      register: confirm_destroy
-
-    - name: Check confirmation
-      fail:
-        msg: "Infrastructure destruction cancelled - confirmation not received"
-      when: confirm_destroy.user_input != "DESTROY"
-
 - name: Destroy Infrastructure Services (if VMs exist)
   hosts: all
   become: yes
