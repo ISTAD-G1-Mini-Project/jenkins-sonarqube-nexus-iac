@@ -86,13 +86,7 @@
 
     - name: Remove local inventory file
       file:
-        path: inventory.ini
-        state: absent
-      ignore_errors: yes
-
-    - name: Remove VM info file
-      file:
-        path: ../vm-info.txt
+        path: ../../inventory.ini
         state: absent
       ignore_errors: yes
 
