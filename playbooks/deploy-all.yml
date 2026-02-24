@@ -3,3 +3,4 @@
 - import_playbook: ./tasks/setup-infrastructure.yml
 - import_playbook: ./tasks/setup-domain.yml
 - import_playbook: ./tasks/setup-ssl.yml
+- import_playbook: ./tasks/verify-tools.yml

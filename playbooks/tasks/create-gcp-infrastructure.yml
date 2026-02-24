@@ -7,7 +7,7 @@
   hosts: localhost
   connection: local
   gather_facts: no
-
+  become: no
   vars_files:
     - ../../vars/gcp_vars.yml
 
@@ -114,8 +114,8 @@
               source_image: "projects/{{ image_project }}/global/images/family/{{ image_family }}"
 
         network_interfaces:
-          - network: "{{ network }}"
-            subnetwork: "{{ subnet }}"
+          - network:
+            selfLink: "projects/{{google_project_id}}/global/networks/default"
             access_configs:
               - name: External NAT
                 type: ONE_TO_ONE_NAT
@@ -136,6 +136,17 @@
         label: "{{ item.name }}"
       register: created_machines
 
+    - name: Write gcp_instance into json file
+      copy:
+        content: "{{ created_machines }}"
+        dest: "../gcp_instance.json"
+      when: true 
+
+    - name: Create inventory from template 
+      template: 
+        src: ../../templates/inventory.j2
+        dest: ../../inventory.ini
+      when: true  
   # ==================================================
   # WAIT FOR SSH
   # ==================================================

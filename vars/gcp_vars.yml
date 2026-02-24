@@ -72,4 +72,4 @@ ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
 jenkins_admin_user: admin
 jenkins_admin_password: changeme123
 
-nexus_configured_admin_password: "changeme123"  # Update after first login — store in vault in production
+nexus_configured_admin_password: "changeme123"

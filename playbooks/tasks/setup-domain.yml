@@ -7,10 +7,6 @@
     - ../../vars/cloudflare_vars.yml
     - ../../vars/secrets.yml
     - ../../vars/gcp_vars.yml
-  vars:
-    # This assumes you have created_machines from the previous playbook
-    machine_ips: "{{ machines | zip(created_machines.results) | map('combine') | list }}"
-    # Result: a list of dicts where each dict has 'name', 'host', 'domains', and the 'natIP'
 
   tasks:
     - name: Create DNS records dynamically

@@ -4,7 +4,6 @@
 
 - name: Setup Machine01 - Jenkins Server
   hosts: jenkins_group
-  become: yes
   gather_facts: yes
   vars_files:
     - ../../vars/gcp_vars.yml
@@ -24,7 +23,6 @@
 
 - name: Setup Machine02 - SonarQube Server
   hosts: sonarqube_group
-  become: yes
   gather_facts: yes
   vars_files:
     - ../../vars/gcp_vars.yml
@@ -38,7 +36,6 @@
 
 - name: Setup Machine03 - Nexus Repository
   hosts: nexus_group
-  become: yes
   gather_facts: yes
   vars_files:
     - ../../vars/gcp_vars.yml

@@ -6,18 +6,6 @@
     update_cache: yes
     cache_valid_time: 3600
 
-- name: Install common packages
-  apt:
-    name:
-      - curl
-      - ca-certificates
-      - gnupg
-      - lsb-release
-      - software-properties-common
-      - apt-transport-https
-      - git
-    state: present
-
 - name: Configure firewall (UFW)
   ufw:
     state: enabled
