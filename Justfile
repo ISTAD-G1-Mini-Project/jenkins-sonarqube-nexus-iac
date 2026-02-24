@@ -4,7 +4,7 @@ ping-all:
         all -m ping 
         
 setup-all:
-    ansible-playbook -i localhost, playbooks/deploy-all.yml \
+    ansible-playbook -i inventory.ini playbooks/deploy-all.yml \
     --vault-password-file ./secrets/vault_pass.txt
 
 create-machines:

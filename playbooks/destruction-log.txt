@@ -1,0 +1,14 @@
+GCP Infrastructure Destroyed: 2026-02-24T17:02:29Z
+
+Deleted Machines:
+- jenkins-server
+- sonarqube-server
+- nexus-server
+
+Network: ansible-infra-network
+Subnet: ansible-infra-subnet
+Firewall rules removed
+
+Manual cleanup required:
+- DNS records (if configured)
+- Service account key file (if no longer needed)

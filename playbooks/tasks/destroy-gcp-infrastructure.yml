@@ -66,6 +66,7 @@
       google.cloud.gcp_compute_subnetwork:
         name: "{{ subnet_name }}"
         region: "{{ gcp_region }}"
+        network: "{{ network }}"
         project: "{{ gcp_project_id }}"
         ip_cidr_range: "{{ subnet_cidr }}"
         auth_kind: serviceaccount
