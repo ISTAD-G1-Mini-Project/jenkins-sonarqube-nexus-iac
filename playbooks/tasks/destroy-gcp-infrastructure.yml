@@ -88,6 +88,12 @@
         state: absent
       ignore_errors: yes
 
+    - name: Remove local gcp_instance file
+      file:
+        path: ../gcp_instance.json
+        state: absent
+      ignore_errors: yes
+
     - name: Destruction Summary
       debug:
         msg: |
