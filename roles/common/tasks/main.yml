@@ -10,31 +10,13 @@
   apt:
     name:
       - curl
-      - wget
-      - git
-      - vim
-      - htop
-      - net-tools
-      - software-properties-common
-      - apt-transport-https
       - ca-certificates
       - gnupg
       - lsb-release
-      - python3-pip
-      - python3-docker
-      - openssl
+      - software-properties-common
+      - apt-transport-https
+      - git
     state: present
-
-- name: Ensure pip docker module is installed
-  pip:
-    name:
-      - docker
-      - docker-compose
-    state: present
-
-- name: Set timezone
-  timezone:
-    name: UTC
 
 - name: Configure firewall (UFW)
   ufw:
@@ -65,10 +47,3 @@
     limit_type: '-'
     limit_item: nofile
     value: '65536'
-
-- name: Create service user for applications
-  user:
-    name: appuser
-    system: yes
-    shell: /bin/bash
-    createhome: yes
