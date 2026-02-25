@@ -158,6 +158,7 @@ admin_email: "admin@yourdomain.com"
 # SSH Configuration
 ssh_user: "ansible"
 ssh_public_key_file: "~/.ssh/id_rsa.pub"
+ssh_private_key_file: "~/.ssh/id_rsa"
 ```
 
 ### 2. Verify Configuration
@@ -175,7 +176,7 @@ gcloud compute zones list --project=YOUR_PROJECT_ID
 
 ```bash
 # This creates VMs + installs everything + add domain names
-ansible-playbook -i localhost playbooks/deploy-all.yml \
+ansible-playbook playbooks/deploy-all.yml \
     --vault-password-file ./secrets/vault_pass.txt
 ```
 
@@ -200,14 +201,14 @@ This single command will:
 ansible-playbook playbooks/tasks/create-gcp-infrastructure.yml
 
 # Step 2: Configure services
-ansible-playbook playbooks/tasks/setup-infrastructure.yml
+ansible-playbook -i inventory.ini playbooks/tasks/setup-infrastructure.yml
 
 # Step 3: Setup domain/DNS
-ansible-playbook playbooks/tasks/setup-domain.yml \
+ansible-playbook -i inventory.ini playbooks/tasks/setup-domain.yml \
 --vault-password-file ./secrets/vault_pass.txt
 
 # Step 4: Setup SSL (after DNS propagation)
-ansible-playbook playbooks/tasks/setup-ssl.yml
+ansible-playbook -i inventory.ini playbooks/tasks/setup-ssl.yml
 ```
 
 ## 🌐 DNS Configuration
@@ -237,7 +238,7 @@ dig jenkins.yourdomain.com
 After DNS propagates:
 
 ```bash
-ansible-playbook playbooks/tasks/setup-ssl.yml
+ansible-playbook -i inventory.ini playbooks/tasks/setup-ssl.yml
 ```
 
 This obtains Let's Encrypt certificates for all domains.
@@ -264,10 +265,10 @@ ssh ansible@NEXUS_IP "docker exec nexus-docker cat /nexus-data/admin.password"
 
 ## 🔧 Management
 
-### Check Status
+### Check installation tools
 
 ```bash
-ansible-playbook playbooks/tasks/verify-infrastructure.yml
+ansible-playbook -i inventory.ini playbooks/tasks/verify-toolsyml
 ```
 
 ### View Logs
@@ -287,7 +288,7 @@ docker logs nexus-docker
 **⚠️ WARNING: This permanently deletes everything!**
 
 ```bash
-ansible-playbook playbooks/tasks/destroy-gcp-infrastructure.yml
+ansible-playbook -i inventory.ini playbooks/tasks/destroy-gcp-infrastructure.yml
 ```
 
 This will:
@@ -317,7 +318,7 @@ ansible-gcp-infrastructure/
 │       ├── setup-domain.yml                         # set up domain name
 │       ├── setup-infrastructure.yml                 # Configure existing VMs
 │       ├── setup-ssl.yml                            # SSL certificate setup
-│       └── verify-infrastructure.yml                # Health checks
+│       └── verify-tools.yml                # Check installation tools
 ├── templates/
 │    └── inventory.j2                  # Inventory Template with Jinja2
 └── roles/
