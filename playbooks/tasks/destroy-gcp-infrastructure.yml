@@ -3,35 +3,24 @@
 # Deletes all VMs, firewall rules, subnet, and network
 # Usage: ansible-playbook destroy-gcp-infrastructure.yml
 
-- name: Destroy Infrastructure Services (if VMs exist)
-  hosts: all
-  become: no
-  gather_facts: no
-  ignore_errors: yes
-  ignore_unreachable: yes
-  tasks:
-    - name: Stop all Docker containers
-      shell: docker stop $(docker ps -aq)
-      ignore_errors: yes
-
-    - name: Remove all Docker containers
-      shell: docker rm -f $(docker ps -aq)
-      ignore_errors: yes
-
-    - name: Remove all Docker volumes
-      shell: docker volume rm $(docker volume ls -q)
-      ignore_errors: yes
-
 - name: Destroy GCP Resources dynamically
   hosts: localhost
   gather_facts: no
   become: no
   vars_files:
     - ../../vars/gcp_vars.yml
-  vars:
-    ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
-
+    
   tasks:
+    - name: Delete Firewall Rules
+      google.cloud.gcp_compute_firewall:
+        name: "{{ item }}"
+        project: "{{ gcp_project_id }}"
+        auth_kind: serviceaccount
+        service_account_file: "{{ gcp_service_account_file }}"
+        state: absent
+      loop: "{{ firewall_rules }}"
+      ignore_errors: yes
+
     - name: Delete all VMs
       google.cloud.gcp_compute_instance:
         name: "{{ item.name }}"
@@ -50,21 +39,11 @@
       pause:
         seconds: 30
 
-    - name: Delete Firewall Rules
-      google.cloud.gcp_compute_firewall:
-        name: "{{ item }}"
-        project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
-        state: absent
-      loop: "{{ firewall_rules }}"
-      ignore_errors: yes
-
     - name: Delete Subnet
       google.cloud.gcp_compute_subnetwork:
         name: "{{ subnet_name }}"
         region: "{{ gcp_region }}"
-        network: "{{ network }}"
+        network: "{{ network_name }}"
         project: "{{ gcp_project_id }}"
         ip_cidr_range: "{{ subnet_cidr }}"
         auth_kind: serviceaccount
@@ -107,23 +86,3 @@
           
           Firewall rules, Subnet, and VPC Network removed.
           DNS records must be manually removed if configured.
-
-    - name: Save destruction log
-      copy:
-        content: |
-          GCP Infrastructure Destroyed: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
-          
-          Deleted Machines:
-          {% for machine, result in machines|zip(deleted_machines.results) %}
-          - {{ machine.name }}
-          {% endfor %}
-          
-          Network: {{ network_name }}
-          Subnet: {{ subnet_name }}
-          Firewall rules removed
-          
-          Manual cleanup required:
-          - DNS records (if configured)
-          - Service account key file (if no longer needed)
-        dest: ../destruction-log.txt
-        mode: '0644'

@@ -74,6 +74,7 @@ firewall_rules:
 # SSH Configuration
 ssh_user: "macbookpro"
 ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
+ssh_private_key_file: "/Users/macbookpro/.ssh/id_rsa"
 
 jenkins_admin_user: admin
 jenkins_admin_password: changeme123

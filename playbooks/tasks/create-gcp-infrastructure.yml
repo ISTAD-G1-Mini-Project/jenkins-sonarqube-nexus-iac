@@ -1,8 +1,4 @@
----
-# Secure & Reusable GCP Infrastructure Setup
-# Usage:
-# ansible-playbook -i localhost, create-and-setup-infrastructure.yml
-
+# Create Secure GCP Infrastructure
 - name: Create Secure GCP Infrastructure
   hosts: localhost
   connection: local
@@ -11,25 +7,19 @@
   vars_files:
     - ../../vars/gcp_vars.yml
 
-  vars:
-    ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
-
   tasks:
-
-  # ==================================================
-  # VALIDATION
-  # ==================================================
-
+    # ==================================================
+    # VALIDATION
+    # ==================================================
     - name: Ensure GCP service account file exists
       stat:
         path: "{{ gcp_service_account_file }}"
       register: sa_file
       failed_when: not sa_file.stat.exists
 
-  # ==================================================
-  # NETWORK
-  # ==================================================
-
+    # ==================================================
+    # NETWORK / FIREWALL
+    # ==================================================
     - name: Create VPC Network
       google.cloud.gcp_compute_network:
         name: "{{ network_name }}"
@@ -44,17 +34,12 @@
       google.cloud.gcp_compute_subnetwork:
         name: "{{ subnet_name }}"
         region: "{{ gcp_region }}"
-        network: "{{ network }}"
+        network: "{{ network_name }}"
         ip_cidr_range: "{{ subnet_cidr }}"
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: present
-      register: subnet
-
-  # ==================================================
-  # FIREWALL
-  # ==================================================
 
     - name: Allow SSH
       google.cloud.gcp_compute_firewall:
@@ -63,34 +48,29 @@
         allowed:
           - ip_protocol: tcp
             ports: ["22"]
-        source_ranges:
-          - "0.0.0.0/0"
+        source_ranges: ["0.0.0.0/0"]
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: present
 
-    - name: Allow HTTP and HTTPS traffic
+    - name: Allow HTTP/HTTPS
       google.cloud.gcp_compute_firewall:
         name: "{{ network_name }}-allow-web"
         network: "{{ network }}"
         allowed:
           - ip_protocol: tcp
             ports: ["80", "443"]
-        target_tags:
-          - http-server
-          - https-server
-        source_ranges:
-          - "0.0.0.0/0"
+        target_tags: ["http-server","https-server"]
+        source_ranges: ["0.0.0.0/0"]
         project: "{{ gcp_project_id }}"
         auth_kind: serviceaccount
         service_account_file: "{{ gcp_service_account_file }}"
         state: present
 
-  # ==================================================
-  # CREATE VMS
-  # ==================================================
-
+    # ==================================================
+    # CREATE VMS
+    # ==================================================
     - name: Read SSH public key
       slurp:
         src: "{{ ssh_public_key_file }}"
@@ -141,49 +121,50 @@
         label: "{{ item.name }}"
       register: created_machines
 
-    - name: Write gcp_instance into json file
-      copy:
-        content: "{{ created_machines }}"
-        dest: "../gcp_instance.json"
-      when: true 
+    # ==================================================
+    # WAIT FOR SSH
+    # ==================================================
+    - name: Wait for SSH
+      wait_for:
+        host: "{{ item.networkInterfaces[0].accessConfigs[0].natIP }}"
+        port: 22
+        delay: 10
+        timeout: 300
+      loop: "{{ created_machines.results }}"
+      loop_control:
+        label: "{{ item.name }}"
 
+    # ==================================================
+    # ADD HOSTS TO DYNAMIC INVENTORY
+    # ==================================================
     - name: Create inventory from template 
       template: 
         src: ../../templates/inventory.j2
         dest: ../../inventory.ini
       when: true  
-  # ==================================================
-  # WAIT FOR SSH
-  # ==================================================
 
-    - name: Wait for SSH
-      wait_for:
-        host: "{{ item }}"
-        port: 22
-        delay: 10
-        timeout: 300
-      loop: "{{ created_machines.results
-        | map(attribute='networkInterfaces')
-        | map('first')
-        | map(attribute='accessConfigs')
-        | map('first')
-        | map(attribute='natIP')
-        | list }}"
+    - name: Add machines dynamically to inventory
+      add_host:
+        name: "{{ item.0.name }}"   
+        groups: "{{ item.0.host }}"
+        ansible_user: "{{ ssh_user }}"
+        ansible_host: "{{ item.1.networkInterfaces[0].accessConfigs[0].natIP }}" 
+        ansible_ssh_private_key_file: "{{ ssh_private_key_file }}"
+        ansible_python_interpreter: /usr/bin/python3.10
+      loop: "{{ machines | zip(created_machines.results) | list }}"
+      loop_control:
+        label: "{{ item.0.name }}"
 
-  # ==================================================
-  # OUTPUT INFO
-  # ==================================================
-
-    - name: Display VM info
+    # ==================================================
+    # DISPLAY VM INFO
+    # ==================================================
+    - name: Show VM info
       debug:
         msg: |
-          Infrastructure Created Successfully!
-
           {% for machine, result in machines|zip(created_machines.results) %}
           {{ machine.name }}
             Internal IP: {{ result.networkInterfaces[0].networkIP }}
             External IP: {{ result.networkInterfaces[0].accessConfigs[0].natIP }}
-            SSH: ssh {{ ssh_user }}@{{ result.networkInterfaces[0].accessConfigs[0].natIP }}
+            SSH: ssh ubuntu@{{ result.networkInterfaces[0].accessConfigs[0].natIP }}
             Domain: {{ machine.domains[0] }}
-
           {% endfor %}
