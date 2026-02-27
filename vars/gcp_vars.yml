@@ -3,8 +3,8 @@
 # Edit these values according to your GCP project
 
 # GCP Project Configuration
-gcp_project_id: "winged-memory-485604-r8"
-gcp_service_account_file: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/credential/service-account.json"
+gcp_project_id: "project-4b3eaec5-c5a4-4b56-954"
+# Auth: Application Default Credentials (ADC) - run 'gcloud auth application-default login'
 gcp_region: "asia-southeast2"
 gcp_zone: "asia-southeast2-b"
 
@@ -20,23 +20,23 @@ boot_disk_type: "pd-standard"  # or "pd-ssd" for better performance
 image_family: "ubuntu-2204-lts"
 image_project: "ubuntu-os-cloud"
 
-admin_email: "vuthytuon168@gmail.com"
+admin_email: "panhavann09@gmail.com"
 
 machines:
   - name: jenkins-server
     host: jenkins_group
     domains:
-      - jenkins.vuthytourn.shop
+      - jenkins.marinet.shop
 
   - name: sonarqube-server
     host: sonarqube_group
     domains:
-      - sonarqube.vuthytourn.shop
+      - sonarqube.marinet.shop
 
   - name: nexus-server
     host: nexus_group
     domains:
-      - nexus.vuthytourn.shop
+      - nexus.marinet.shop
 
 service_containers:
   jenkins_group:
@@ -59,20 +59,21 @@ service_ports:
     - 8081
     - 8082
     - 8083
+
 nginx_services:
   - name: jenkins
-    domain: jenkins.vuthytourn.shop
+    domain: jenkins.marinet.shop
     http_port: 8080
   - name: sonarqube
-    domain: sonarqube.vuthytourn.shop
+    domain: sonarqube.marinet.shop
     http_port: 9001
   - name: nexus
-    domain: nexus.vuthytourn.shop
+    domain: nexus.marinet.shop
     http_port: 8081
 
 # SSH Configuration
-ssh_user: "macbookpro"
-ssh_public_key_file: "/Users/macbookpro/.ssh/id_rsa.pub"
+ssh_user: "macos"
+ssh_public_key_file: "/Users/macos/.ssh/id_rsa.pub"
 
 jenkins_admin_user: admin
 jenkins_admin_password: changeme123

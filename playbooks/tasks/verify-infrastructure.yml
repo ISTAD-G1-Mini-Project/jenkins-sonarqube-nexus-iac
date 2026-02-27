@@ -118,3 +118,4 @@
           2. Review logs: docker logs <container_name>
           3. Verify DNS configuration
           4. Test HTTPS endpoints
+

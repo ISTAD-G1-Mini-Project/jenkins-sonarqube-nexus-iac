@@ -2,6 +2,7 @@
 # Destroy GCP Infrastructure Playbook (Dynamic)
 # Deletes all VMs, firewall rules, subnet, and network
 # Usage: ansible-playbook destroy-gcp-infrastructure.yml
+# Auth: Uses Application Default Credentials (run 'gcloud auth application-default login' first)
 
 - name: Confirm Destruction
   hosts: localhost
@@ -67,8 +68,7 @@
         name: "{{ item.name }}"
         zone: "{{ gcp_zone }}"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: absent
       loop: "{{ machines }}"
       loop_control:
@@ -84,8 +84,7 @@
       google.cloud.gcp_compute_firewall:
         name: "{{ network_name }}-allow-{{ item }}"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: absent
       loop: "{{ machines | map(attribute='name') | map('split','-') | map('first') | list | unique }}"
       loop_control:
@@ -97,8 +96,7 @@
         name: "{{ subnet_name }}"
         region: "{{ gcp_region }}"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: absent
       ignore_errors: yes
 
@@ -106,8 +104,7 @@
       google.cloud.gcp_compute_network:
         name: "{{ network_name }}"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: absent
       ignore_errors: yes
 

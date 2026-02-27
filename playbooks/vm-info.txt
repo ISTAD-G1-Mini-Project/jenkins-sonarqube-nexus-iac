@@ -2,18 +2,18 @@ GCP Infrastructure Created: 2026-02-18T03:57:43Z
 jenkins-server:
   Internal IP: 10.0.0.2
   External IP: 34.50.105.226
-  SSH: ssh macbookpro@34.50.105.226
-  Domain: jenkins.vuthytourn.shop
+  SSH: ssh macos@34.50.105.226
+  Domain: jenkins.marinet.shop
 
 sonarqube-server:
   Internal IP: 10.0.0.3
   External IP: 34.50.114.112
-  SSH: ssh macbookpro@34.50.114.112
-  Domain: sonarqube.vuthytourn.shop
+  SSH: ssh macos@34.50.114.112
+  Domain: sonarqube.marinet.shop
 
 nexus-server:
   Internal IP: 10.0.0.4
   External IP: 34.50.97.169
-  SSH: ssh macbookpro@34.50.97.169
-  Domain: nexus.vuthytourn.shop
+  SSH: ssh macos@34.50.97.169
+  Domain: nexus.marinet.shop
 

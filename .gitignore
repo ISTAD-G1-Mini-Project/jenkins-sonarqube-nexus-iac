@@ -2,4 +2,4 @@ credential/service-account.json
 
 # Python virtual environment
 .venv/
-secrets/
+secrets/credential/

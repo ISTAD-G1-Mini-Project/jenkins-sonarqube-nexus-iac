@@ -1,6 +1,8 @@
 ---
 # Main Playbook: Create GCP VMs and Setup Complete Infrastructure
 # Usage: ansible-playbook -i localhost, create-and-setup-infrastructure.yml
+# Auth: Application Default Credentials (ADC)
+# Run `gcloud auth application-default login` before executing
 
 - name: Create GCP Infrastructure
   hosts: localhost
@@ -10,7 +12,7 @@
   vars_files:
     - ../../vars/gcp_vars.yml
   vars:
-    ansible_python_interpreter: "/Users/macbookpro/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
+    ansible_python_interpreter: "/Users/macos/Desktop/ansible-gcp-infrastructure/.venv/bin/python"
 
   tasks:
     - name: Display setup information
@@ -20,24 +22,18 @@
           - Project: {{ gcp_project_id }}
           - Region: {{ gcp_region }}
           - Zone: {{ gcp_zone }}
+          - Auth: Application Default Credentials (ADC)
           - Machines:
           {% for machine in machines %}
             - {{ machine.name }} ({{ machine.domains[0] }})
           {% endfor %}
-
-    - name: Ensure GCP service account file exists
-      stat:
-        path: "{{ gcp_service_account_file }}"
-      register: sa_file
-      failed_when: not sa_file.stat.exists
 
     - name: Create VPC Network
       google.cloud.gcp_compute_network:
         name: "{{ network_name }}"
         auto_create_subnetworks: no
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: present
       register: network
 
@@ -48,8 +44,7 @@
         network: "{{ network }}"
         ip_cidr_range: "{{ subnet_cidr }}"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: present
       register: subnet
 
@@ -64,8 +59,7 @@
         machine_type: "{{ machine_type }}"
         zone: "{{ gcp_zone }}"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         disks:
           - auto_delete: true
             boot: true
@@ -117,8 +111,7 @@
         source_ranges:
           - "0.0.0.0/0"
         project: "{{ gcp_project_id }}"
-        auth_kind: serviceaccount
-        service_account_file: "{{ gcp_service_account_file }}"
+        auth_kind: application   # ← changed
         state: present
       loop: "{{ machines | map(attribute='host') | unique }}"
       loop_control:

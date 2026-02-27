@@ -27,35 +27,30 @@ brew install ansible      # macOS
 
 # Install Python modules
 pip3 install requests google-auth
-
 ```
 
 ### 2. GCP Setup
 
-#### A. Create/Get Service Account Key
+#### A. Authenticate with Application Default Credentials (ADC)
+
+This project uses **Application Default Credentials (ADC)** instead of a service account key file.
 
 ```bash
-# Option 1: Use existing service account
-# Download the JSON key file from GCP Console:
-# IAM & Admin → Service Accounts → Your Service Account → Keys → Add Key
+# Install the gcloud CLI if not already installed
+# https://cloud.google.com/sdk/docs/install
 
-# Option 2: Create new service account via gcloud
-gcloud iam service-accounts create ansible-automation \
-    --display-name="Ansible Automation"
+# Authenticate with your Google account
+gcloud auth login
 
-# Grant necessary permissions
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-    --member="serviceAccount:ansible-automation@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/compute.admin"
+# Set up ADC so tools and SDKs can authenticate automatically
+gcloud auth application-default login
 
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-    --member="serviceAccount:ansible-automation@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/iam.serviceAccountUser"
-
-# Create and download key
-gcloud iam service-accounts keys create ~/gcp-key.json \
-    --iam-account=ansible-automation@YOUR_PROJECT_ID.iam.gserviceaccount.com
+# Set your active project
+gcloud config set project YOUR_PROJECT_ID
 ```
+
+> **What is ADC?**  
+> Application Default Credentials (ADC) is a strategy that automatically finds credentials based on the application environment. When you run `gcloud auth application-default login`, it saves credentials to a well-known location (`~/.config/gcloud/application_default_credentials.json`) that is picked up automatically by Google client libraries and Ansible's GCP modules — no key file needed.
 
 #### B. Required GCP APIs
 
@@ -108,6 +103,7 @@ pip install cloudflare
 # or for Ansible
 ansible-galaxy collection install community.general
 ```
+
 #### 4. Set Environment Variable
 
 ```bash
@@ -141,7 +137,7 @@ pip install -r requirements.txt
 ```yaml
 # GCP Project Configuration
 gcp_project_id: "my-gcp-project-123"
-gcp_service_account_file: "/path/to/your-service-account-key.json"
+gcp_auth_kind: "application"        # Uses ADC — no key file needed
 gcp_region: "us-central1"
 gcp_zone: "us-central1-a"
 
@@ -160,12 +156,15 @@ ssh_user: "ansible"
 ssh_public_key_file: "~/.ssh/id_rsa.pub"
 ```
 
+> **Note:** With ADC, you do **not** need to set `gcp_service_account_file`. The GCP modules will automatically pick up your credentials from the ADC path (`~/.config/gcloud/application_default_credentials.json`).
+
 ### 2. Verify Configuration
 
 ```bash
-# Test GCP authentication
-export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your-key.json"
-gcloud auth activate-service-account --key-file=/path/to/your-key.json
+# Verify ADC is set up correctly
+gcloud auth application-default print-access-token
+
+# Test access to your project
 gcloud compute zones list --project=YOUR_PROJECT_ID
 ```
 
@@ -174,7 +173,7 @@ gcloud compute zones list --project=YOUR_PROJECT_ID
 ### One-Command Full Deployment
 
 ```bash
-# This creates VMs + installs everything + add domain names
+# This creates VMs + installs everything + adds domain names
 ansible-playbook -i localhost playbooks/deploy-all.yml \
     --vault-password-file ./secrets/vault_pass.txt
 ```
@@ -338,6 +337,19 @@ gcloud compute project-info describe --project=YOUR_PROJECT_ID
 
 # Verify APIs are enabled
 gcloud services list --enabled
+
+# Verify ADC credentials are valid
+gcloud auth application-default print-access-token
+```
+
+### ADC Authentication Issues
+
+```bash
+# Re-authenticate if credentials have expired
+gcloud auth application-default login
+
+# Verify the credentials file exists
+cat ~/.config/gcloud/application_default_credentials.json
 ```
 
 ### SSH Connection Issues
